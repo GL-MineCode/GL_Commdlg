@@ -201,7 +201,7 @@ Issues and Pull Requests are welcome to improve this project.
 
 ## Version History
 
-- v1.0.0 (2025-01-01): Initial release
+- v1.0.0 (2025-10-05): Initial release
   - Basic file dialog functionality
   - System color and font selection
   - Custom input and message dialogs
