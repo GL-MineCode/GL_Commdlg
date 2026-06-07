@@ -1540,7 +1540,7 @@ private:
                     DrawTextW(memDC, wmessage.c_str(), -1, &textRect, DT_LEFT | DT_TOP | DT_WORDBREAK);
                 }
                 
-                std::wstring progressText = L"进度: " + 
+                std::wstring progressText = L"Progress: " + 
                     std::to_wstring(static_cast<int>(progress)) + L"% (" +
                     std::to_wstring(current) + L" / " + std::to_wstring(max) + L")";
                 
