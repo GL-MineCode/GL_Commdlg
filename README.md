@@ -88,6 +88,12 @@ auto file = getOpenFileName({
 
 All functions accept optional parameters: `title`, `initialDir`, `defaultFileName`, `defaultExt`, and `parentHWND`.
 
+| Dialog | Preview |
+|--------|---------|
+| Open File | ![](demo/select_file.png) |
+| Save File | ![](demo/save_file.png) |
+| Browse Folder | ![](demo/select_directory.png) |
+
 ### Color Picker
 
 ```cpp
@@ -97,6 +103,8 @@ chooseColor(color);
 ```
 
 The library defines a fallback `SDL_Color` only if the SDL header is not already included.
+
+![](demo/pick_color.png)
 
 ### Font Picker
 
@@ -109,6 +117,8 @@ chooseFont(cfi);
 //                    (may be empty if the font file is not found)
 ```
 
+![](demo/pick_font.png)
+
 ### Prompt Dialog
 
 ```cpp
@@ -118,6 +128,8 @@ if (confirmed) {
     // input contains the entered text
 }
 ```
+
+![](demo/prompt.png)
 
 ### Custom Message Box
 
@@ -132,8 +144,13 @@ int result = messageBox(
 // Returns the clicked button's key, 0 if closed, -1 if options is empty
 ```
 
-Style 0 uses GDI `DrawTextW` with `DT_WORDBREAK` — the dialog auto-sizes to fit the text.  
+Style 0 uses GDI `DrawTextW` with `DT_WORDBREAK` — the dialog auto-sizes to fit the text.
+
+![](demo/message_box_style_0.png)
+
 Style 1 uses a multi-line EDIT control with auto-scroll — suitable for long messages.
+
+![](demo/message_box_style_1.png)
 
 ## Dynamic (Non-blocking) Dialogs
 
@@ -158,6 +175,8 @@ bar.Close();  // or let the destructor handle it
 | `GetProgressInfo(current, max, message, percent)` | Read current state |
 | `Show()` / `Close()` | Show or close the dialog |
 | `IsFinished()` | Check if the dialog has been closed |
+
+![](demo/progress_bar.png)
 
 ### DynamicSlider
 
@@ -190,10 +209,23 @@ slider.GetSliderInfo(cur, min, max, msg);
 
 The callback receives a `DynamicSliderCallbackMessageType` (`Dragging` or `Released`) and the current value; it can return a modified value.
 
+![](demo/slider.png)
+
 ## Project Structure
 
 ```
 GL_Commdlg/
+├── demo/
+│   ├── select_file.png      # Screenshots demonstrating each dialog
+│   ├── save_file.png
+│   ├── select_directory.png
+│   ├── pick_color.png
+│   ├── pick_font.png
+│   ├── prompt.png
+│   ├── message_box_style_0.png
+│   ├── message_box_style_1.png
+│   ├── progress_bar.png
+│   └── slider.png
 ├── include/
 │   ├── GL_Commdlg.hpp      # Main header — the whole library
 │   └── UTF8toWide.hpp       # UTF-8 / wide string conversion helpers

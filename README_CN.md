@@ -88,6 +88,12 @@ auto file = getOpenFileName({
 
 所有函数均支持可选参数：`title`（标题）、`initialDir`（初始目录）、`defaultFileName`（默认文件名）、`defaultExt`（默认扩展名）和 `parentHWND`（父窗口句柄）。
 
+| 对话框 | 预览 |
+|--------|------|
+| 打开文件 | ![](demo/select_file.png) |
+| 保存文件 | ![](demo/save_file.png) |
+| 浏览文件夹 | ![](demo/select_directory.png) |
+
 ### 颜色选择器
 
 ```cpp
@@ -97,6 +103,8 @@ chooseColor(color);
 ```
 
 如果尚未包含 SDL 头文件，库会提供一个回退的 `SDL_Color` 定义。
+
+![](demo/pick_color.png)
 
 ### 字体选择器
 
@@ -109,6 +117,8 @@ chooseFont(cfi);
 //                    （未找到时可能为空字符串）
 ```
 
+![](demo/pick_font.png)
+
 ### 输入对话框
 
 ```cpp
@@ -118,6 +128,8 @@ if (confirmed) {
     // input 包含用户输入的内容
 }
 ```
+
+![](demo/prompt.png)
 
 ### 自定义消息框
 
@@ -132,8 +144,13 @@ int result = messageBox(
 // 返回点击按钮的键值，关闭返回 0，options 为空返回 -1
 ```
 
-样式 0 使用 GDI 的 `DrawTextW` 配合 `DT_WORDBREAK` 绘制文本，对话框会根据文本内容自动调整大小。  
+样式 0 使用 GDI 的 `DrawTextW` 配合 `DT_WORDBREAK` 绘制文本，对话框会根据文本内容自动调整大小。
+
+![](demo/message_box_style_0.png)
+
 样式 1 使用支持自动滚动的多行 EDIT 控件，适合显示长文本。
+
+![](demo/message_box_style_1.png)
 
 ## 动态（非阻塞）对话框
 
@@ -158,6 +175,8 @@ bar.Close();  // 或让析构函数自动处理
 | `GetProgressInfo(current, max, message, percent)` | 读取当前状态 |
 | `Show()` / `Close()` | 显示或关闭对话框 |
 | `IsFinished()` | 检查对话框是否已关闭 |
+
+![](demo/progress_bar.png)
 
 ### 动态滑动条
 
@@ -190,10 +209,23 @@ slider.GetSliderInfo(cur, min, max, msg);
 
 回调接收 `DynamicSliderCallbackMessageType`（`Dragging` 或 `Released`）和当前值，可返回修改后的值。
 
+![](demo/slider.png)
+
 ## 项目结构
 
 ```
 GL_Commdlg/
+├── demo/
+│   ├── select_file.png      # 各对话框的演示截图
+│   ├── save_file.png
+│   ├── select_directory.png
+│   ├── pick_color.png
+│   ├── pick_font.png
+│   ├── prompt.png
+│   ├── message_box_style_0.png
+│   ├── message_box_style_1.png
+│   ├── progress_bar.png
+│   └── slider.png
 ├── include/
 │   ├── GL_Commdlg.hpp      # 主头文件 — 整个库
 │   └── UTF8toWide.hpp       # UTF-8 / 宽字符串转换辅助函数
