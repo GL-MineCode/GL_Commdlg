@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build test",
+            "type": "shell",
+            "command": "mingw32-make.exe",
+            "args": [
+                "test"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "使用 Makefile 编译 test.exe"
+        },
+        {
+            "label": "Build all",
+            "type": "shell",
+            "command": "mingw32-make.exe",
+            "args": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "使用 Makefile 编译所有目标"
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "mingw32-make.exe",
+            "args": [
+                "clean"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

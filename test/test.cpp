@@ -1,0 +1,284 @@
+#include <cstdio>
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include "GL_Commdlg.hpp"
+
+// ============================================================
+// GL_Commdlg.hpp - Complete Functionality Test
+// This test demonstrates all public APIs provided by the library.
+// Each test opens a dialog and waits for user interaction.
+// ============================================================
+
+static void testMessageBox()
+{
+    std::cout << "=== Test: messageBox (style 0 - GDI drawn) ===\n";
+    std::cout << "A message box with word-wrapped text should appear. "
+                 "The dialog auto-resizes to fit the content.\n";
+    int result = messageBox(
+        "messageBox Test(Style 0)",
+        "This is like the traditional MessageBox function.\r\n" "However, you can completely customize the buttons in the dialog box.\r\n"
+        "And these is no limitations in the number of the buttons!\r\n"
+        ,{
+            {0, "OK"}, 
+            {1, "Cancel"}, 
+            {2, "Retry"},
+            {3, "Custom 1"},
+            {4, "Custom 2"},
+            {5, "Custom 3"}
+        }
+    );//Default in style 0
+    std::cout << "Result: button ID = " << result << "\n\n";
+}
+
+static void testMessageBoxRich()
+{
+    std::cout << "=== Test: messageBox (style 1 - rich/edit) ===\n";
+    std::cout << "A rich message box with [Yes] [No] [Maybe] buttons should appear.\n";
+    int result = messageBox(
+        "messageBox Test(Style 1)",
+        "This is a rich message box.\nIt supports multi-line text with word wrapping.\n\nYou can display longer messages here,such as debugging infomations and clauses,etc.",
+        {{10, "Yes"}, {20, "No"}, {30, "Maybe"}},
+        NULL,
+        1 //Use style 1
+    );
+    std::cout << "Result: button ID = " << result << "\n\n";
+}
+
+static void testPromptDialog()
+{
+    std::cout << "=== Test: promptDialog ===\n";
+    std::cout << "A input dialog should appear. Enter some text and click OK.\n";
+    std::string output;
+    bool confirmed = promptDialog(
+        "Input Test",
+        "Please enter your name below:",
+        output,
+        "Default Name"
+    );
+    if (confirmed) {
+        std::cout << "Confirmed. Input: \"" << output << "\"\n";
+    } else {
+        std::cout << "Cancelled.\n";
+    }
+    std::cout << "\n";
+}
+
+static void testGetOpenFileName()
+{
+    std::cout << "=== Test: getOpenFileName ===\n";
+    std::cout << "An Open File dialog should appear. Select a file and click Open.\n";
+    try {
+        std::string path = getOpenFileName(
+            {"Text Files (*.txt)|*.txt", "All Files (*.*)|*.*"},
+            "Select a text file",
+            "",
+            "",
+            "txt"
+        );
+        if (path.empty()) {
+            std::cout << "User cancelled.\n";
+        } else {
+            std::cout << "Selected file: " << path << "\n";
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testGetSaveFileName()
+{
+    std::cout << "=== Test: getSaveFileName ===\n";
+    std::cout << "A Save File dialog should appear. Choose a path and click Save.\n";
+    try {
+        std::string path = getSaveFileName(
+            {"Text Files (*.txt)|*.txt", "All Files (*.*)|*.*"},
+            "Save as...",
+            "",
+            "untitled.txt",
+            "txt"
+        );
+        if (path.empty()) {
+            std::cout << "User cancelled.\n";
+        } else {
+            std::cout << "Save path: " << path << "\n";
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testGetOpenMultipleFileNames()
+{
+    std::cout << "=== Test: getOpenMultipleFileNames ===\n";
+    std::cout << "A multi-select file dialog should appear. "
+                 "Select multiple files and click Open.\n";
+    try {
+        auto files = getOpenMultipleFileNames(
+            {"All Files (*.*)|*.*"},
+            "Select multiple files"
+        );
+        if (files.empty()) {
+            std::cout << "User cancelled.\n";
+        } else {
+            std::cout << "Selected " << files.size() << " file(s):\n";
+            for (size_t i = 0; i < files.size(); ++i) {
+                std::cout << "  [" << i << "] " << files[i] << "\n";
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testGetOpenDirectoryName()
+{
+    std::cout << "=== Test: getOpenDirectoryName ===\n";
+    std::cout << "A folder browser dialog should appear. Select a folder.\n";
+    try {
+        std::string dir = getOpenDirectoryName(
+            "Please select a folder:",
+            ""
+        );
+        if (dir.empty()) {
+            std::cout << "User cancelled.\n";
+        } else {
+            std::cout << "Selected directory: " << dir << "\n";
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testChooseColor()
+{
+    std::cout << "=== Test: chooseColor ===\n";
+    std::cout << "A color picker dialog should appear. Pick a color.\n";
+    try {
+        SDL_Color color = {255, 0, 0, 255};  // initial red
+        chooseColor(color);
+        std::cout << "Selected color: R=" << (int)color.r
+                  << " G=" << (int)color.g
+                  << " B=" << (int)color.b
+                  << " A=" << (int)color.a << "\n";
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testChooseFont()
+{
+    std::cout << "=== Test: chooseFont ===\n";
+    std::cout << "A font selection dialog should appear. Pick a font.\n";
+    try {
+        chooseFontInfo cfi;
+        chooseFont(cfi);
+        std::cout << "Selected font:\n";
+        std::cout << "  Name: " << cfi.fontFaceName << "\n";
+        std::cout << "  Size: " << cfi.fontPointSize << "pt\n";
+        std::cout << "  Path: " << (cfi.fontPath.empty() ? "(not found)" : cfi.fontPath) << "\n";
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
+static void testDynamicProgressBar()
+{
+    std::cout << "=== Test: CreateDynamicProgressBar ===\n";
+    std::cout << "A non-blocking progress bar dialog should appear. "
+                 "Watch it progress from 0 to 100.\n";
+
+    auto bar = CreateDynamicProgressBar(
+        "Progress Test",
+        "Downloading files...",
+        NULL
+    );
+
+    // Simulate progress updates
+    for (uint64_t i = 0; i <= 100; i += 10) {
+        bar.SetValue(i, 100, "Processing: " + std::to_string(i) + "%");
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    }
+
+    bar.SetValue(100, 100, "Complete!");
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    std::cout << "Closing progress bar...\n";
+    bar.Close();
+
+    // Wait for the thread to finish
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::cout << "Progress bar test finished.\n\n";
+}
+
+static void testDynamicSlider()
+{
+    std::cout << "=== Test: CreateDynamicSlider ===\n";
+    std::cout << "A non-blocking slider dialog should appear. "
+                 "Try dragging the slider.\n";
+
+    auto slider = CreateDynamicSlider(
+        "Slider Test",
+        "Drag the slider to adjust value:",
+        0,     // min
+        100,   // max
+        50,    // initial value
+        [](DynamicSliderCallbackMessageType type, int value) -> int {
+            if (type == DynamicSliderCallbackMessageType::Dragging) {
+                // You could modify or clamp the value here
+            }
+            return value;
+        },
+        NULL
+    );
+
+    std::cout << "Slider is running. Close the window when done.\n";
+
+    // Wait while the slider is open (poll every 200ms)
+    while (!slider.IsFinished()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    int cur = 0, min = 0, max = 0;
+    std::string msg;
+    slider.GetSliderInfo(cur, min, max, msg);
+    std::cout << "Slider closed. Final value: " << cur
+              << " (range: " << min << " - " << max << ")\n";
+    std::cout << "Slider test finished.\n\n";
+}
+
+// ============================================================
+// Entry point
+// ============================================================
+int main()
+{
+    std::cout << "Each test will open a dialog. Interact with it,\n";
+    std::cout << "then check the console output for results.\n";
+    std::cout << "Press Ctrl+C at any time to abort.\n\n";
+
+    // --- Blocking Dialogs (sequential, user must interact) ---
+    testMessageBox();
+    testMessageBoxRich();
+    testPromptDialog();
+    testGetOpenFileName();
+    testGetSaveFileName();
+    testGetOpenMultipleFileNames();
+    testGetOpenDirectoryName();
+    testChooseColor();
+    testChooseFont();
+
+    // --- Dynamic (non-blocking) Dialogs ---
+    testDynamicProgressBar();
+    testDynamicSlider();
+
+    std::cout << "============================================\n";
+    std::cout << "  All tests completed!\n";
+    std::cout << "============================================\n";
+    return 0;
+}
