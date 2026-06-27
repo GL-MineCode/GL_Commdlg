@@ -2,16 +2,19 @@
 # Targets:test (test/test.cpp)
 
 CXX      := g++.exe
-CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-subobject-linkage
+CXXFLAGS := -std=c++20 -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-subobject-linkage -MMD -MP
 INCLUDES := -Iinclude
 LDFLAGS  := 
-LDLIBS   := -lcomdlg32 -lshell32 -lgdi32 -lole32
+LDLIBS   := -lcomdlg32 -lshell32 -lgdi32 -lole32 -luuid -ldwmapi
 
 # Build dir
 BUILD_DIR := build
 
 # Target files
 TARGETS := $(BUILD_DIR)/test.exe
+
+# Auto-generated dependency files (one per source)
+DEPS := $(TARGETS:.exe=.d)
 
 .PHONY: all clean test
 
@@ -24,6 +27,9 @@ $(BUILD_DIR):
 # test - Test for DateTime
 $(BUILD_DIR)/test.exe: test/test.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -o $@ $(LDFLAGS) $(LDLIBS)
+
+# Include auto-generated dependency files (if they exist)
+-include $(DEPS)
 
 test: $(BUILD_DIR)/test.exe
 
