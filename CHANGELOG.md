@@ -13,6 +13,14 @@
   - Dark-themed round-cornered window (`RoundRect` border + clip region for text)
 
 - **`CtrlDraw::DrawFrame`** — Utility to draw a flat (non-rounded) rectangle frame with 1px border
+- **`DynamicColorPicker`** — New non-blocking dynamic color picker dialog:
+  - HSL colour wheel (2D canvas: saturation × lightness)
+  - Hue strip + alpha strip sliders
+  - RGBA / HSL / HEX numeric input fields
+  - Old vs new color preview
+  - Screen color picker (eyedropper tool)
+  - Runs in a separate thread; uses `Controls::Button::Subclass` and `Controls::Edit::Subclass`
+  - Factory function: `CreateDynamicColorPicker(title, r, g, b, a, hParent)`
 
 ### Changed
 - **Dark theme consistency** — All hardcoded `RGB()` colors in `PromptDialogProc`,

@@ -29,7 +29,7 @@
 
 int main() {
     // 打开文件对话框
-    std::string file = getOpenFileName(
+    std::string file = GLDLG::getOpenFileName(
         {"文本文件 (*.txt)|*.txt", "所有文件 (*.*)|*.*"},
         "选择一个文件"
     );
@@ -37,7 +37,7 @@ int main() {
         std::cout << "已选择: " << file << std::endl;
 
     // 自定义按钮的消息框
-    int choice = messageBox(
+    int choice = GLDLG::messageBox(
         "问题",
         "是否继续？",
         {{1, "是"}, {2, "否"}}
@@ -81,7 +81,7 @@ mingw32-make test    # 编译 test/test.cpp
 过滤器使用 `"描述|匹配模式"` 格式，多模式用 `;` 分隔：
 
 ```cpp
-auto file = getOpenFileName({
+auto file = GLDLG::getOpenFileName({
     "文本文件 (*.txt)|*.txt",
     "图片 (*.png;*.jpg)|*.png;*.jpg",
     "所有文件 (*.*)|*.*"
@@ -99,8 +99,8 @@ auto file = getOpenFileName({
 ### 字体选择器
 
 ```cpp
-chooseFontInfo cfi;
-chooseFont(cfi);
+GLDLG::chooseFontInfo cfi;
+GLDLG::chooseFont(cfi);
 // cfi.fontFaceName  — 例如 "Arial"
 // cfi.fontPointSize — 例如 12
 // cfi.fontPath      — 例如 "C:\\Windows\\Fonts\\arial.ttf"
@@ -113,7 +113,7 @@ chooseFont(cfi);
 
 ```cpp
 std::string input;
-bool confirmed = promptDialog("输入", "请输入你的名字：", input, "默认名字");
+bool confirmed = GLDLG::promptDialog("输入", "请输入你的名字：", input, "默认名字");
 if (confirmed) {
     // input 包含用户输入的内容
 }
@@ -124,7 +124,7 @@ if (confirmed) {
 ### 自定义消息框
 
 ```cpp
-int result = messageBox(
+int result = GLDLG::messageBox(
     "标题",
     "消息内容。",
     {{10, "确定"}, {20, "取消"}, {30, "帮助"}},
@@ -149,7 +149,7 @@ int result = messageBox(
 ### 动态进度条
 
 ```cpp
-auto bar = CreateDynamicProgressBar("进度", "工作中...");
+auto bar = GLDLG::CreateDynamicProgressBar("进度", "工作中...");
 
 for (int i = 0; i <= 100; i += 10) {
     bar.SetValue(i, 100, std::to_string(i) + "%");
@@ -171,9 +171,9 @@ bar.Close();  // 或让析构函数自动处理
 ### 动态滑动条
 
 ```cpp
-auto slider = CreateDynamicSlider(
+auto slider = GLDLG::CreateDynamicSlider(
     "音量", "调节音量：", 0, 100, 50,
-    [](DynamicSliderCallbackMessageType type, int value) -> int {
+    [](GLDLG::DynamicSliderCallbackMessageType type, int value) -> int {
         return value;  // 可选地修改或限制值
     }
 );
@@ -200,6 +200,30 @@ slider.GetSliderInfo(cur, min, max, msg);
 回调接收 `DynamicSliderCallbackMessageType`（`Dragging` 或 `Released`）和当前值，可返回修改后的值。
 
 ![](demo/slider.png)
+
+### 动态颜色选择器
+
+```cpp
+auto picker = GLDLG::CreateDynamicColorPicker("选择颜色", {255, 0, 0, 255});
+
+while (!picker.IsFinished()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+GLDLG::ColorRGBA color = picker.GetColor();
+```
+
+| 方法 | 说明 |
+|------|------|
+| `GetColor()` | 获取当前颜色（返回 `ColorRGBA`） |
+| `SetCallback(cb)` | 设置颜色改变时的回调函数 |
+| `Show()` / `Close()` | 显示或关闭对话框 |
+| `IsFinished()` | 检查对话框是否已关闭 |
+
+> 点击取色按钮（`Pick`）可从屏幕任意位置拾取颜色。
+
+![](demo/pick_color2.png)
+![](demo/pick_color3.png)
 
 ## 主题定制
 

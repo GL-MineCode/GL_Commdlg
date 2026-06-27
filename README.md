@@ -16,10 +16,10 @@ A C++ header-only library that wraps Windows Common Dialogs and Shell dialogs, p
 - **Font picker** — Font selection dialog wrapping `ChooseFontW`, with automatic font file path lookup via the registry
 - **Prompt dialog** — Custom text input dialog
 - **Custom message box** — Message box with user-defined buttons and two display styles
-- **Non-blocking dynamic dialogs** — Progress bar and slider that run in a separate thread, controllable from the calling thread
+- **Non-blocking dynamic dialogs** — Progress bar, slider, and color picker that run in a separate thread, controllable from the calling thread
     - **Slider dialog** — Non-blocking slider dialog for selecting a numeric value
     - **Progress dialog** — Non-blocking progress bar dialog for monitoring task progress
-    - **Color picker** - A non-blocking color picker dialog box that is more powerful than the blocking dialog box provided by Win32 API! It supports HSL/HEX color input, screen color picking, alpha value support, just like QT's color picker! (currently under development)
+    - **Color picker** — Non-blocking color picker dialog with HSL colour wheel, HEX/RGB/HSL inputs, alpha support, and screen color picker
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ A C++ header-only library that wraps Windows Common Dialogs and Shell dialogs, p
 
 int main() {
     // Open a file dialog
-    std::string file = getOpenFileName(
+    std::string file = GLDLG::getOpenFileName(
         {"Text Files (*.txt)|*.txt", "All Files (*.*)|*.*"},
         "Select a file"
     );
@@ -37,7 +37,7 @@ int main() {
         std::cout << "Selected: " << file << std::endl;
 
     // Message box with custom buttons
-    int choice = messageBox(
+    int choice = GLDLG::messageBox(
         "Question",
         "Do you want to continue?",
         {{1, "Yes"}, {2, "No"}}
@@ -81,7 +81,7 @@ mingw32-make test    # Build test/test.cpp
 Filters use `"Description|Pattern"` format. Multiple patterns are separated by `;`:
 
 ```cpp
-auto file = getOpenFileName({
+auto file = GLDLG::getOpenFileName({
     "Text Files (*.txt)|*.txt",
     "Images (*.png;*.jpg)|*.png;*.jpg",
     "All Files (*.*)|*.*"
@@ -99,8 +99,8 @@ All functions accept optional parameters: `title`, `initialDir`, `defaultFileNam
 ### Font Picker
 
 ```cpp
-chooseFontInfo cfi;
-chooseFont(cfi);
+GLDLG::chooseFontInfo cfi;
+GLDLG::chooseFont(cfi);
 // cfi.fontFaceName  — e.g. "Arial"
 // cfi.fontPointSize — e.g. 12
 // cfi.fontPath      — e.g. "C:\\Windows\\Fonts\\arial.ttf"
@@ -113,7 +113,7 @@ chooseFont(cfi);
 
 ```cpp
 std::string input;
-bool confirmed = promptDialog("Input", "Enter your name:", input, "Default Name");
+bool confirmed = GLDLG::promptDialog("Input", "Enter your name:", input, "Default Name");
 if (confirmed) {
     // input contains the entered text
 }
@@ -124,7 +124,7 @@ if (confirmed) {
 ### Custom Message Box
 
 ```cpp
-int result = messageBox(
+int result = GLDLG::messageBox(
     "Title",
     "Message text.",
     {{10, "OK"}, {20, "Cancel"}, {30, "Help"}},
@@ -149,7 +149,7 @@ Dynamic dialogs run in a **separate thread**, so they never block the calling co
 ### DynamicProgressBar
 
 ```cpp
-auto bar = CreateDynamicProgressBar("Progress", "Working...");
+auto bar = GLDLG::CreateDynamicProgressBar("Progress", "Working...");
 
 for (int i = 0; i <= 100; i += 10) {
     bar.SetValue(i, 100, std::to_string(i) + "%");
@@ -171,9 +171,9 @@ bar.Close();  // or let the destructor handle it
 ### DynamicSlider
 
 ```cpp
-auto slider = CreateDynamicSlider(
+auto slider = GLDLG::CreateDynamicSlider(
     "Volume", "Adjust the volume:", 0, 100, 50,
-    [](DynamicSliderCallbackMessageType type, int value) -> int {
+    [](GLDLG::DynamicSliderCallbackMessageType type, int value) -> int {
         return value;  // optionally modify or clamp
     }
 );
@@ -200,6 +200,30 @@ slider.GetSliderInfo(cur, min, max, msg);
 The callback receives a `DynamicSliderCallbackMessageType` (`Dragging` or `Released`) and the current value; it can return a modified value.
 
 ![](demo/slider.png)
+
+### DynamicColorPicker
+
+```cpp
+auto picker = GLDLG::CreateDynamicColorPicker("Pick a Color", {255, 0, 0});
+
+while (!picker.IsFinished()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+GLDLG::ColorRGBA color = picker.GetColor();
+```
+
+| Method | Description |
+|--------|-------------|
+| `GetColor()` | Get the current color (returns `ColorRGBA`) |
+| `SetCallback(cb)` | Set a callback for color change events |
+| `Show()` / `Close()` | Show or close the dialog |
+| `IsFinished()` | Check if the dialog has been closed |
+
+> The eyedropper button (`Pick`) lets you pick a color from anywhere on the screen.
+
+![](demo/pick_color2.png)
+![](demo/pick_color3.png)
 
 ## Theme Customization
 
