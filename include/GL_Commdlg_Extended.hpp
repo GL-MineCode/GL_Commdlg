@@ -24,16 +24,19 @@
 #include <dwmapi.h>
 #include "UTF8toWide.hpp"
 
-namespace GLDLG{
+namespace GLDLG
+{
 
 #pragma region 非Win32原生对话框
 
-    struct ColorRGBA{
+    struct ColorRGBA
+    {
         uint8_t r;
         uint8_t g;
         uint8_t b;
         uint8_t a;
 
+        constexpr ColorRGBA() : r(255), g(255), b(255), a(255) {}
         constexpr ColorRGBA(uint8_t r_, uint8_t g_, uint8_t b_, uint8_t a_ = 255)
             : r(r_), g(g_), b(b_), a(a_) {}
 
@@ -43,7 +46,8 @@ namespace GLDLG{
         }
     };
 
-    struct Theme{
+    struct Theme
+    {
         ColorRGBA Text;
         ColorRGBA ControlFrame;
         ColorRGBA PrimaryBackground;
@@ -53,24 +57,26 @@ namespace GLDLG{
     };
 
     inline Theme theme = {
-        // Text: #E6E6EF 
+        // Text: #E6E6EF
         ColorRGBA(230, 230, 239),
-        // ControlFrame: #383842 
+        // ControlFrame: #383842
         ColorRGBA(56, 56, 66),
-        // PrimaryBackground: #1A1A1E 
+        // PrimaryBackground: #1A1A1E
         ColorRGBA(26, 26, 30),
-        // SecondaryBackground: #27272E 
+        // SecondaryBackground: #27272E
         ColorRGBA(39, 39, 46),
-        // PrimaryForeground: #424949 
+        // PrimaryForeground: #424949
         ColorRGBA(66, 73, 73),
-        // SecondaryForeground: #485466 
+        // SecondaryForeground: #485466
         ColorRGBA(72, 84, 102)};
 
-    inline const Theme& GetTheme() { return theme; }
+    inline const Theme &GetTheme() { return theme; }
     inline void SetTheme(const Theme &t) { theme = t; }
 
-    namespace Controls{
-        void InitWindowColor(HWND hWnd){
+    namespace Controls
+    {
+        void InitWindowColor(HWND hWnd)
+        {
             COLORREF captionBgr = theme.PrimaryBackground.ToCOLORREF();
             DwmSetWindowAttribute(
                 hWnd,
@@ -95,12 +101,12 @@ namespace GLDLG{
         }
 
         enum class CtrlState
-            {
-                Normal,
-                Hover,
-                Pressed,
-                Disabled
-            };
+        {
+            Normal,
+            Hover,
+            Pressed,
+            Disabled
+        };
         namespace CtrlDraw
         {
 
@@ -131,7 +137,8 @@ namespace GLDLG{
             }
 
         }
-        namespace Button{
+        namespace Button
+        {
             struct WinData
             {
                 WNDPROC origProc = nullptr;
@@ -140,7 +147,8 @@ namespace GLDLG{
                 HFONT font = nullptr;
             };
 
-            namespace{
+            namespace
+            {
                 COLORREF GetBgColor(CtrlState state)
                 {
                     switch (state)
@@ -184,12 +192,13 @@ namespace GLDLG{
                 {
                     pData->font = (HFONT)wParam;
                     break;
-                } 
+                }
                 case WM_MOUSEMOVE:
                 {
                     if (pData->state != CtrlState::Disabled)
                     {
-                        if (pData->state != CtrlState::Pressed){
+                        if (pData->state != CtrlState::Pressed)
+                        {
                             pData->state = CtrlState::Hover;
                             InvalidateRect(hWnd, nullptr, TRUE);
                         }
@@ -255,7 +264,6 @@ namespace GLDLG{
 
                     EndPaint(hWnd, &ps);
                     return 0;
-
                 }
                 case WM_DESTROY:
                 {
@@ -296,7 +304,8 @@ namespace GLDLG{
                 }
             }
         }
-        namespace Edit{
+        namespace Edit
+        {
             struct WinData
             {
                 WNDPROC origProc = nullptr;
@@ -305,7 +314,8 @@ namespace GLDLG{
                 HFONT font = nullptr;
             };
 
-            namespace{
+            namespace
+            {
                 COLORREF GetBgColor(CtrlState state)
                 {
                     switch (state)
@@ -472,11 +482,13 @@ namespace GLDLG{
                 }
             }
         }
-        namespace Tooltip{
+        namespace Tooltip
+        {
 
             LRESULT CALLBACK WinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-            namespace{
+            namespace
+            {
                 const wchar_t CLASS_NAME[] = L"GL_Commdlg.TooltipClass";
 
                 bool EnsureRegistered()
@@ -1094,20 +1106,20 @@ namespace GLDLG{
                 }
                 calculatedTextHeight = 0;
                 // for(auto i : hButtons){
-                    
+
                 // }
                 hButtons.clear();
                 PostQuitMessage(0);
                 return 0;
             }
 
-            // case WM_CTLCOLORBTN:
-            // {
-            //     HDC hdc = (HDC)wParam;
-            //     SetBkColor(hdc, RGB(240, 240, 240));
-            //     SetTextColor(hdc, RGB(0, 0, 0));
-            //     return (LRESULT)hDefaultBrush;
-            // }
+                // case WM_CTLCOLORBTN:
+                // {
+                //     HDC hdc = (HDC)wParam;
+                //     SetBkColor(hdc, RGB(240, 240, 240));
+                //     SetTextColor(hdc, RGB(0, 0, 0));
+                //     return (LRESULT)hDefaultBrush;
+                // }
 
             case WM_ERASEBKGND:
             {
@@ -2780,6 +2792,1835 @@ namespace GLDLG{
                                       HWND hParent = nullptr)
     {
         return DynamicSlider(title, initialMessage, minValue, maxValue, initialValue, callbackOnValueChange, hParent);
+    }
+
+    // ─── 动态颜色选择器 ─────────────────────────────────────────────
+
+    namespace
+    {
+        // 颜色工具
+        struct HSL
+        {
+            double h, s, l;
+        };
+
+        HSL RgbToHsl(int r, int g, int b)
+        {
+            double rd = r / 255.0, gd = g / 255.0, bd = b / 255.0;
+            double mx = (std::max)({rd, gd, bd}), mn = (std::min)({rd, gd, bd}), delta = mx - mn;
+            HSL out = {0, 0, (mx + mn) / 2.0};
+            if (delta > 1e-10)
+            {
+                out.s = out.l > 0.5 ? delta / (2.0 - mx - mn) : delta / (mx + mn);
+                if (mx == rd)
+                    out.h = 60.0 * std::fmod((gd - bd) / delta, 6.0);
+                else if (mx == gd)
+                    out.h = 60.0 * ((bd - rd) / delta + 2.0);
+                else
+                    out.h = 60.0 * ((rd - gd) / delta + 4.0);
+                if (out.h < 0)
+                    out.h += 360.0;
+            }
+            return out;
+        }
+
+        uint8_t H2R(double p, double q, double t)
+        {
+            if (t < 0)
+                t += 1.0;
+            if (t > 1)
+                t -= 1.0;
+            if (t < 1.0 / 6)
+                return (uint8_t)((p + (q - p) * 6.0 * t) * 255.0);
+            if (t < 1.0 / 2)
+                return (uint8_t)(q * 255.0);
+            if (t < 2.0 / 3)
+                return (uint8_t)((p + (q - p) * (2.0 / 3.0 - t) * 6.0) * 255.0);
+            return (uint8_t)(p * 255.0);
+        }
+
+        void HslToRgb(double h, double s, double l, int &r, int &g, int &b)
+        {
+            if (s < 1e-10)
+            {
+                r = g = b = (int)(l * 255.0);
+                return;
+            }
+            double q = l < 0.5 ? l * (1.0 + s) : l + s - l * s, p = 2.0 * l - q, hf = h / 360.0;
+            r = H2R(p, q, hf + 1.0 / 3);
+            g = H2R(p, q, hf);
+            b = H2R(p, q, hf - 1.0 / 3);
+        }
+    }
+
+    /**
+     * @brief A non-blocking dynamic color picker dialog
+     * @brief 非阻塞的动态颜色选择器对话框
+     *
+     * Runs in a separate thread and provides a full-featured color picker with
+     * HSL colour wheel + hue/alpha sliders + numeric RGBA/HSL/HEX inputs.
+     */
+    class DynamicColorPicker : public DynamicDialogInterface
+    {
+    public:
+        enum class DynamicColorCallbackMessageType
+        {
+            Dragging,
+            Released
+        };
+
+    private:
+        enum class ColorPickerMessageType
+        {
+            SetColor,
+            SetCallback,
+            Close
+        };
+
+        struct ColorPickerMessage
+        {
+            ColorPickerMessageType type;
+            int r, g, b, a;
+            std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> callback;
+
+            ColorPickerMessage(ColorPickerMessageType t, int r_ = 0, int g_ = 0, int b_ = 0, int a_ = 255)
+                : type(t), r(r_), g(g_), b(b_), a(a_) {}
+            ColorPickerMessage(ColorPickerMessageType t,
+                               std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> cb)
+                : type(t), r(0), g(0), b(0), a(255), callback(std::move(cb)) {}
+        };
+
+        struct DialogData
+        {
+            DynamicColorPicker *parent;
+            HWND hwnd = nullptr, hwndParent = nullptr;
+            std::wstring title;
+
+            std::atomic<int> curR{255}, curG{255}, curB{255}, curA{255};
+            std::atomic<int> oldR{255}, oldG{255}, oldB{255}, oldA{255};
+            std::atomic<double> hue{0}, sat{0.5}, light{0.5};
+            std::atomic<bool> enableAlpha{true};
+            std::atomic<bool> isFinished{false}, draggingCanvas{false}, draggingHue{false}, draggingAlpha{false};
+
+            // 回调函数
+            std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> callback;
+            std::mutex callbackMutex;
+
+            void SetCallback(std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> cb)
+            {
+                std::lock_guard<std::mutex> lock(callbackMutex);
+                callback = std::move(cb);
+            }
+
+            ColorRGBA CallCallback(DynamicColorCallbackMessageType type)
+            {
+                ColorRGBA col((uint8_t)curR.load(), (uint8_t)curG.load(), (uint8_t)curB.load(), (uint8_t)curA.load());
+                std::lock_guard<std::mutex> lock(callbackMutex);
+                if (callback)
+                {
+                    ColorRGBA result = callback(type, col);
+                    curR.store(result.r);
+                    curG.store(result.g);
+                    curB.store(result.b);
+                    curA.store(result.a);
+                    return result;
+                }
+                return col;
+            }
+
+            // ── 内联字段滑块 ──
+            struct FieldSlider {
+                RECT rect = {};           // 滑块区域（相对于客户区）
+                int displayMin = 0, displayMax = 255;
+                std::atomic<int>* targetInt = nullptr;
+                std::atomic<double>* targetDouble = nullptr;
+                double doubleScale = 1.0; // display = doubleValue * doubleScale
+                bool dragging = false;
+                int thumbSize = 8;
+
+                int GetDisplayValue() const {
+                    if(targetDouble) return (int)(targetDouble->load() * doubleScale);
+                    return targetInt ? targetInt->load() : 0;
+                }
+                void SetFromDisplay(int displayVal) const {
+                    if(targetDouble) targetDouble->store(displayVal / doubleScale);
+                    else if(targetInt) targetInt->store(displayVal);
+                }
+                void SetupInt(int mn, int mx, std::atomic<int>* t, const RECT &rc) {
+                    displayMin=mn; displayMax=mx; targetInt=t; targetDouble=nullptr; rect=rc;
+                }
+                void SetupDouble(int mn, int mx, std::atomic<double>* t, double scale, const RECT &rc) {
+                    displayMin=mn; displayMax=mx; targetDouble=t; targetInt=nullptr; doubleScale=scale; rect=rc;
+                }
+
+                int GetThumbPos() const {
+                    int sw = rect.right - rect.left;
+                    int val = GetDisplayValue();
+                    float ratio = (displayMax > displayMin) ? (float)(val - displayMin) / (float)(displayMax - displayMin) : 0.0f;
+                    return rect.left + (int)(ratio * (sw - thumbSize));
+                }
+                int DisplayFromPos(int mouseX) const {
+                    int sw = rect.right - rect.left;
+                    int range = sw - thumbSize;
+                    if(range <= 0) return displayMin;
+                    int left = rect.left;
+                    int cx = (std::max)(left, (std::min)(left + range, mouseX));
+                    float ratio = (float)(cx - left) / (float)range;
+                    return displayMin + (int)(ratio * (displayMax - displayMin));
+                }
+            } sliderR, sliderG, sliderB, sliderA, sliderH, sliderS, sliderL;
+
+            // 控件句柄
+            HWND hR = nullptr, hG = nullptr, hB = nullptr, hA = nullptr;
+            HWND hH = nullptr, hS = nullptr, hL = nullptr, hHex = nullptr;
+            HWND hBtnOK = nullptr, hBtnCancel = nullptr, hBtnEye = nullptr;
+
+            HFONT hFont = nullptr;
+            HBITMAP hCachedWheel = nullptr;
+            HDC hCachedDC = nullptr;
+            double cachedLight = -1.0;
+            HBRUSH hCheckerBrush = nullptr;
+            HDC hMemDC = nullptr;
+            HBITMAP hMemBmp = nullptr;
+            int memW = 0, memH = 0;
+            bool updatingInputs = false;
+
+            // ── Eyedropper (screen color picker) ──
+            std::atomic<bool> eyeDropperMode{false};
+            int eyePreviewR = 0, eyePreviewG = 0, eyePreviewB = 0;
+            HWND hOverlay = nullptr;
+            HWND hEyePreview = nullptr;
+            HWND hMagnifier = nullptr;
+            std::atomic<int> zoomLevel{2};
+
+            void SyncFromRgbToInputs()
+            {
+                if (updatingInputs)
+                    return;
+                updatingInputs = true;
+                wchar_t buf[32];
+                int r2 = curR.load(), g2 = curG.load(), b2 = curB.load(), a2 = curA.load();
+                double h2 = hue.load(), s2 = sat.load(), l2 = light.load();
+                swprintf(buf, L"%d", r2);
+                if (hR)
+                    SetWindowTextW(hR, buf);
+                swprintf(buf, L"%d", g2);
+                if (hG)
+                    SetWindowTextW(hG, buf);
+                swprintf(buf, L"%d", b2);
+                if (hB)
+                    SetWindowTextW(hB, buf);
+                swprintf(buf, L"%d", a2);
+                if (hA)
+                    SetWindowTextW(hA, buf);
+                swprintf(buf, L"%d", (int)h2);
+                if (hH)
+                    SetWindowTextW(hH, buf);
+                swprintf(buf, L"%d", (int)(s2 * 100));
+                if (hS)
+                    SetWindowTextW(hS, buf);
+                swprintf(buf, L"%d", (int)(l2 * 100));
+                if (hL)
+                    SetWindowTextW(hL, buf);
+                swprintf(buf, L"%02X%02X%02X", r2, g2, b2);
+                if (hHex)
+                    SetWindowTextW(hHex, buf);
+                updatingInputs = false;
+            }
+            void ReadInputsToRgb()
+            {
+                if (updatingInputs)
+                    return;
+                updatingInputs = true;
+                wchar_t buf[32];
+                if (hR && GetWindowTextW(hR, buf, 32))
+                    curR.store((std::max)(0, (std::min)(255, _wtoi(buf))));
+                if (hG && GetWindowTextW(hG, buf, 32))
+                    curG.store((std::max)(0, (std::min)(255, _wtoi(buf))));
+                if (hB && GetWindowTextW(hB, buf, 32))
+                    curB.store((std::max)(0, (std::min)(255, _wtoi(buf))));
+                if (hA && GetWindowTextW(hA, buf, 32))
+                    curA.store((std::max)(0, (std::min)(255, _wtoi(buf))));
+                if (hHex)
+                {
+                    GetWindowTextW(hHex, buf, 32);
+                    const wchar_t *p = buf;
+                    if (*p == L'#')
+                        p++;
+                    unsigned int val = 0;
+                    swscanf_s(p, L"%x", &val);
+                    if (wcslen(p) >= 6)
+                    {
+                        curR.store((val >> 16) & 0xFF);
+                        curG.store((val >> 8) & 0xFF);
+                        curB.store(val & 0xFF);
+                    }
+                }
+                int r3 = curR.load(), g3 = curG.load(), b3 = curB.load();
+                auto hsl2 = RgbToHsl(r3, g3, b3);
+                hue.store(hsl2.h);
+                sat.store(hsl2.s);
+                light.store(hsl2.l);
+                swprintf(buf, L"%d", (int)hsl2.h);
+                if (hH)
+                    SetWindowTextW(hH, buf);
+                swprintf(buf, L"%d", (int)(hsl2.s * 100));
+                if (hS)
+                    SetWindowTextW(hS, buf);
+                swprintf(buf, L"%d", (int)(hsl2.l * 100));
+                if (hL)
+                    SetWindowTextW(hL, buf);
+                swprintf(buf, L"%02X%02X%02X", r3, g3, b3);
+                if (hHex)
+                    SetWindowTextW(hHex, buf);
+                updatingInputs = false;
+            }
+        };
+
+        std::unique_ptr<std::thread> dialogThread;
+        std::atomic<bool> threadRunning{false};
+        std::condition_variable messageCV;
+        std::mutex messageMutex;
+        std::queue<ColorPickerMessage> messageQueue;
+        std::shared_ptr<DialogData> dialogData;
+
+        static bool IsWindowClassRegistered()
+        {
+            static std::once_flag f;
+            static bool r = false;
+            std::call_once(f, []
+                           {
+                WNDCLASSEXW wc = {sizeof(wc), CS_HREDRAW|CS_VREDRAW, WindowProc,
+                   0,0, GetModuleHandleW(nullptr), nullptr, LoadCursor(nullptr,IDC_ARROW),
+                   (HBRUSH)(COLOR_WINDOW+1), nullptr, L"DynamicColorPickerClass", nullptr};
+                r = RegisterClassExW(&wc) != 0;
+
+                // Register overlay class for eyedropper
+                WNDCLASSEXW oc = {sizeof(oc), CS_HREDRAW|CS_VREDRAW, EyeOverlayProc,
+                   0,0, GetModuleHandleW(nullptr), nullptr, LoadCursor(nullptr,IDC_CROSS),
+                   (HBRUSH)(COLOR_WINDOW+1), nullptr, L"GL_Commdlg.EyeOverlayClass", nullptr};
+                RegisterClassExW(&oc);
+
+                // Register preview class for eyedropper tooltip
+                WNDCLASSEXW pc = {sizeof(pc), CS_HREDRAW|CS_VREDRAW|CS_SAVEBITS, EyePreviewProc,
+                   0,0, GetModuleHandleW(nullptr), nullptr, LoadCursor(nullptr,IDC_ARROW),
+                   (HBRUSH)(COLOR_WINDOW+1), nullptr, L"GL_Commdlg.EyePreviewClass", nullptr};
+                RegisterClassExW(&pc);
+
+                // Register magnifier class for zoomed pixel view
+                WNDCLASSEXW mc = {sizeof(mc), CS_HREDRAW|CS_VREDRAW|CS_SAVEBITS, EyeMagnifierProc,
+                   0,0, GetModuleHandleW(nullptr), nullptr, LoadCursor(nullptr,IDC_ARROW),
+                   (HBRUSH)(COLOR_WINDOW+1), nullptr, L"GL_Commdlg.EyeMagnifierClass", nullptr};
+                RegisterClassExW(&mc); });
+            return r;
+        }
+
+        // ── Update magnifier content & position ──
+        static void UpdateMagnifier(DialogData *pData)
+        {
+            if (!pData->hMagnifier || !IsWindow(pData->hMagnifier))
+                return;
+
+            POINT pt;
+            GetCursorPos(&pt);
+
+            // Position magnifier below the preview, or to the right if no preview
+            int px = pt.x + 20, py = pt.y + 20;
+            RECT scrRect = {0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+
+            if (pData->hEyePreview && IsWindow(pData->hEyePreview))
+            {
+                RECT pr;
+                GetWindowRect(pData->hEyePreview, &pr);
+                px = pr.left;
+                py = pr.bottom + 6;
+            }
+
+            RECT mr;
+            GetWindowRect(pData->hMagnifier, &mr);
+            int mw = mr.right - mr.left, mh = mr.bottom - mr.top;
+            if (px + mw > scrRect.right) px = scrRect.right - mw - 4;
+            if (py + mh > scrRect.bottom) py = pt.y - mh - 10;
+            if (py < 0) py = 4;
+
+            SetWindowPos(pData->hMagnifier, HWND_TOPMOST, px, py, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+            InvalidateRect(pData->hMagnifier, nullptr, TRUE);
+            UpdateWindow(pData->hMagnifier);
+        }
+
+        // ── Eyedropper overlay window (full-screen, nearly transparent) ──
+        static LRESULT CALLBACK EyeOverlayProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+        {
+            if (msg == WM_NCCREATE)
+            {
+                auto *pCreate = (CREATESTRUCT *)lp;
+                auto *pData = (DialogData *)pCreate->lpCreateParams;
+                SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pData);
+                return DefWindowProcW(hwnd, msg, wp, lp);
+            }
+            auto *pData = (DialogData *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (!pData) return DefWindowProcW(hwnd, msg, wp, lp);
+
+            switch (msg)
+            {
+            case WM_SETCURSOR:
+                SetCursor(LoadCursor(nullptr, IDC_CROSS));
+                return TRUE;
+
+            case WM_MOUSEMOVE:
+            {
+                POINT pt;
+                GetCursorPos(&pt);
+                HDC hdcScreen = GetDC(nullptr);
+                COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                ReleaseDC(nullptr, hdcScreen);
+                int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
+                pData->eyePreviewR = r;
+                pData->eyePreviewG = g;
+                pData->eyePreviewB = b;
+
+                // Update preview position and redraw
+                if (pData->hEyePreview && IsWindow(pData->hEyePreview))
+                {
+                    int px = pt.x + 20, py = pt.y + 20;
+                    RECT scrRect = {0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+                    RECT pr;
+                    GetWindowRect(pData->hEyePreview, &pr);
+                    int pw = pr.right - pr.left, ph = pr.bottom - pr.top;
+                    if (px + pw > scrRect.right) px = pt.x - pw - 10;
+                    if (py + ph > scrRect.bottom) py = pt.y - ph - 10;
+                    SetWindowPos(pData->hEyePreview, HWND_TOPMOST, px, py, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+                    InvalidateRect(pData->hEyePreview, nullptr, TRUE);
+                    UpdateWindow(pData->hEyePreview);
+                }
+
+                // ── Magnifier: show when Ctrl held ──
+                bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                if (ctrlDown)
+                {
+                    if (pData->hMagnifier && IsWindow(pData->hMagnifier))
+                    {
+                        if (!IsWindowVisible(pData->hMagnifier))
+                            ShowWindow(pData->hMagnifier, SW_SHOWNOACTIVATE);
+                        UpdateMagnifier(pData);
+                    }
+                }
+                else
+                {
+                    if (pData->hMagnifier && IsWindow(pData->hMagnifier) && IsWindowVisible(pData->hMagnifier))
+                        ShowWindow(pData->hMagnifier, SW_HIDE);
+                }
+                return 0;
+            }
+
+            case WM_MOUSEWHEEL:
+            {
+                bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                if (ctrlDown && pData->hMagnifier && IsWindow(pData->hMagnifier))
+                {
+                    int delta = GET_WHEEL_DELTA_WPARAM(wp);
+                    int step = (delta > 0) ? 1 : -1;
+                    int newZoom = pData->zoomLevel.load() + step;
+                    newZoom = (std::max)(2, (std::min)(10, newZoom));
+                    pData->zoomLevel.store(newZoom);
+                    InvalidateRect(pData->hMagnifier, nullptr, TRUE);
+                    UpdateWindow(pData->hMagnifier);
+                    return 0;
+                }
+                break;
+            }
+
+            case WM_LBUTTONDOWN:
+            {
+                POINT pt;
+                GetCursorPos(&pt);
+                HDC hdcScreen = GetDC(nullptr);
+                COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                ReleaseDC(nullptr, hdcScreen);
+                int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
+
+                // Update color picker values
+                pData->curR.store(r);
+                pData->curG.store(g);
+                pData->curB.store(b);
+                auto hsl = RgbToHsl(r, g, b);
+                pData->hue.store(hsl.h);
+                pData->sat.store(hsl.s);
+                pData->light.store(hsl.l);
+
+                // Signal main dialog to exit eyedropper mode (picked = true)
+                if (pData->hwnd && IsWindow(pData->hwnd))
+                    PostMessageW(pData->hwnd, WM_USER + 100, 1, 0);
+                return 0;
+            }
+
+            case WM_RBUTTONDOWN:
+                // Cancel eyedropper mode
+                if (pData->hwnd && IsWindow(pData->hwnd))
+                    PostMessageW(pData->hwnd, WM_USER + 100, 0, 0);
+                return 0;
+
+            case WM_KEYDOWN:
+                if (wp == VK_ESCAPE)
+                {
+                    if (pData->hwnd && IsWindow(pData->hwnd))
+                        PostMessageW(pData->hwnd, WM_USER + 100, 0, 0);
+                    return 0;
+                }
+                // Arrow keys: nudge cursor by 1px (only on initial press, not repeat)
+                if (!(lp & 0x40000000))
+                {
+                    POINT pt;
+                    GetCursorPos(&pt);
+                    int dx = 0, dy = 0;
+                    if (wp == VK_LEFT) dx = -1;
+                    else if (wp == VK_RIGHT) dx = 1;
+                    else if (wp == VK_UP) dy = -1;
+                    else if (wp == VK_DOWN) dy = 1;
+                    if (dx != 0 || dy != 0)
+                    {
+                        SetCursorPos(pt.x + dx, pt.y + dy);
+                        return 0;
+                    }
+                }
+                break;
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
+        }
+
+        // ── Eyedropper magnifier (zoomed pixel preview with crosshair) ──
+        static LRESULT CALLBACK EyeMagnifierProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+        {
+            if (msg == WM_NCCREATE)
+            {
+                auto *pCreate = (CREATESTRUCT *)lp;
+                auto *pData = (DialogData *)pCreate->lpCreateParams;
+                SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pData);
+                return DefWindowProcW(hwnd, msg, wp, lp);
+            }
+            auto *pData = (DialogData *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (!pData) return DefWindowProcW(hwnd, msg, wp, lp);
+
+            switch (msg)
+            {
+            case WM_NCPAINT:
+            case WM_NCACTIVATE:
+                return 0;
+
+            case WM_PAINT:
+            {
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd, &ps);
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                int magW = rc.right - rc.left, magH = rc.bottom - rc.top;
+                int zoom = pData->zoomLevel.load();
+                int srcW = magW / zoom, srcH = magH / zoom;
+                if (srcW < 1) srcW = 1;
+                if (srcH < 1) srcH = 1;
+
+                POINT pt;
+                GetCursorPos(&pt);
+                int srcX = pt.x - srcW / 2, srcY = pt.y - srcH / 2;
+
+                // ── Create source DIBSection ──
+                BITMAPINFO bmiS = {};
+                bmiS.bmiHeader.biSize = sizeof(bmiS.bmiHeader);
+                bmiS.bmiHeader.biWidth = srcW;
+                bmiS.bmiHeader.biHeight = -srcH;
+                bmiS.bmiHeader.biPlanes = 1;
+                bmiS.bmiHeader.biBitCount = 32;
+                bmiS.bmiHeader.biCompression = BI_RGB;
+                BYTE *srcBits = nullptr;
+                HBITMAP hSrcBmp = CreateDIBSection(hdc, &bmiS, DIB_RGB_COLORS, (void**)&srcBits, nullptr, 0);
+                HDC srcDC = CreateCompatibleDC(hdc);
+                HBITMAP oldSrc = (HBITMAP)SelectObject(srcDC, hSrcBmp);
+
+                HDC scrDC = GetDC(nullptr);
+                BitBlt(srcDC, 0, 0, srcW, srcH, scrDC, srcX, srcY, SRCCOPY);
+                ReleaseDC(nullptr, scrDC);
+
+                // ── Create magnified DIBSection ──
+                BITMAPINFO bmiM = {};
+                bmiM.bmiHeader.biSize = sizeof(bmiM.bmiHeader);
+                bmiM.bmiHeader.biWidth = magW;
+                bmiM.bmiHeader.biHeight = -magH;
+                bmiM.bmiHeader.biPlanes = 1;
+                bmiM.bmiHeader.biBitCount = 32;
+                bmiM.bmiHeader.biCompression = BI_RGB;
+                BYTE *magBits = nullptr;
+                HBITMAP hMagBmp = CreateDIBSection(hdc, &bmiM, DIB_RGB_COLORS, (void**)&magBits, nullptr, 0);
+                HDC magDC = CreateCompatibleDC(hdc);
+                HBITMAP oldMag = (HBITMAP)SelectObject(magDC, hMagBmp);
+
+                // Nearest-neighbor scaling
+                for (int my = 0; my < magH; my++)
+                {
+                    int sy = my * srcH / magH;
+                    if (sy >= srcH) sy = srcH - 1;
+                    for (int mx = 0; mx < magW; mx++)
+                    {
+                        int sx = mx * srcW / magW;
+                        if (sx >= srcW) sx = srcW - 1;
+                        int si = (sy * srcW + sx) * 4;
+                        int mi = (my * magW + mx) * 4;
+                        magBits[mi + 0] = srcBits[si + 0];
+                        magBits[mi + 1] = srcBits[si + 1];
+                        magBits[mi + 2] = srcBits[si + 2];
+                        magBits[mi + 3] = 255;
+                    }
+                }
+
+                // ── Crosshair ──
+                int cx = magW / 2, cy = magH / 2;
+                int ci = (cy * magW + cx) * 4;
+                int cr = magBits[ci + 2], cg = magBits[ci + 1], cb = magBits[ci + 0];
+                BYTE xR = (cr > 128) ? 0 : 255;
+                BYTE xG = (cg > 128) ? 0 : 255;
+                BYTE xB = (cb > 128) ? 0 : 255;
+                BYTE ixR = 255 - xR, ixG = 255 - xG, ixB = 255 - xB;
+
+                // Helper lambda: set pixel in magBits
+                auto setPix = [&](int x, int y, BYTE r2, BYTE g2, BYTE b2) {
+                    if (x < 0 || x >= magW || y < 0 || y >= magH) return;
+                    int idx = (y * magW + x) * 4;
+                    magBits[idx + 0] = b2;
+                    magBits[idx + 1] = g2;
+                    magBits[idx + 2] = r2;
+                    magBits[idx + 3] = 255;
+                };
+
+                int hl = 8; // crosshair arm half-length
+                // Horizontal (outline first, then inner)
+                for (int x = cx - hl - 1; x <= cx + hl + 1; x++)
+                {
+                    setPix(x, cy - 1, ixR, ixG, ixB);
+                    setPix(x, cy + 1, ixR, ixG, ixB);
+                }
+                for (int x = cx - hl; x <= cx + hl; x++)
+                {
+                    setPix(x, cy, xR, xG, xB);
+                }
+                // Vertical (outline first, then inner)
+                for (int y = cy - hl - 1; y <= cy + hl + 1; y++)
+                {
+                    setPix(cx - 1, y, ixR, ixG, ixB);
+                    setPix(cx + 1, y, ixR, ixG, ixB);
+                }
+                for (int y = cy - hl; y <= cy + hl; y++)
+                {
+                    setPix(cx, y, xR, xG, xB);
+                }
+                // Center dot (fill with inverted color)
+                setPix(cx, cy, ixR, ixG, ixB);
+
+                // ── Render ──
+                BitBlt(hdc, 0, 0, magW, magH, magDC, 0, 0, SRCCOPY);
+
+                // Border
+                HPEN bp = CreatePen(PS_SOLID, 2, theme.ControlFrame.ToCOLORREF());
+                HPEN op = (HPEN)SelectObject(hdc, bp);
+                HBRUSH ob = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+                Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
+                SelectObject(hdc, op);
+                SelectObject(hdc, ob);
+                DeleteObject(bp);
+
+                // Zoom level label (top-left corner)
+                SetTextColor(hdc, theme.Text.ToCOLORREF());
+                SetBkMode(hdc, TRANSPARENT);
+                wchar_t zt[16];
+                swprintf(zt, L"%dx", zoom);
+                RECT zr = {rc.left + 4, rc.top + 2, rc.right - 4, rc.top + 18};
+                DrawTextW(hdc, zt, -1, &zr, DT_LEFT | DT_TOP | DT_SINGLELINE);
+
+                SelectObject(srcDC, oldSrc);
+                SelectObject(magDC, oldMag);
+                DeleteDC(srcDC);
+                DeleteDC(magDC);
+                DeleteObject(hSrcBmp);
+                DeleteObject(hMagBmp);
+
+                EndPaint(hwnd, &ps);
+                return 0;
+            }
+
+            case WM_ERASEBKGND:
+                return 1;
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
+        }
+
+        // ── Eyedropper preview tooltip (shows color swatch + RGB) ──
+        static LRESULT CALLBACK EyePreviewProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+        {
+            if (msg == WM_NCCREATE)
+            {
+                auto *pCreate = (CREATESTRUCT *)lp;
+                auto *pData = (DialogData *)pCreate->lpCreateParams;
+                SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pData);
+                return DefWindowProcW(hwnd, msg, wp, lp);
+            }
+            auto *pData = (DialogData *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (!pData) return DefWindowProcW(hwnd, msg, wp, lp);
+
+            switch (msg)
+            {
+            case WM_NCPAINT:
+            case WM_NCACTIVATE:
+                return 0;
+
+            case WM_PAINT:
+            {
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd, &ps);
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+
+                // Double buffer
+                HDC memDC = CreateCompatibleDC(hdc);
+                HBITMAP memBmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+                HBITMAP oldBmp = (HBITMAP)SelectObject(memDC, memBmp);
+
+                auto &th = GetTheme();
+
+                // Background
+                HBRUSH bgBr = CreateSolidBrush(th.SecondaryBackground.ToCOLORREF());
+                FillRect(memDC, &rc, bgBr);
+                DeleteObject(bgBr);
+
+                int r = pData->eyePreviewR;
+                int g = pData->eyePreviewG;
+                int b = pData->eyePreviewB;
+
+                // Color swatch (left side, 32x32)
+                RECT swRect = {6, 10, 38, 42};
+                HBRUSH swBr = CreateSolidBrush(RGB(r, g, b));
+                FillRect(memDC, &swRect, swBr);
+                DeleteObject(swBr);
+                HPEN bp = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                HPEN oldPen = (HPEN)SelectObject(memDC, bp);
+                HBRUSH oldBrush = (HBRUSH)SelectObject(memDC, GetStockObject(NULL_BRUSH));
+                Rectangle(memDC, swRect.left, swRect.top, swRect.right, swRect.bottom);
+                SelectObject(memDC, oldPen);
+                SelectObject(memDC, oldBrush);
+                DeleteObject(bp);
+
+                // RGB text (top line)
+                SetTextColor(memDC, th.Text.ToCOLORREF());
+                SetBkMode(memDC, TRANSPARENT);
+                HFONT hFont = CreateFontW(-15, 0, 0, 0, FW_SEMIBOLD, 0, 0, 0, DEFAULT_CHARSET,
+                                          0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+                HFONT oldFont = (HFONT)SelectObject(memDC, hFont);
+                wchar_t text[64];
+                swprintf(text, L"R:%d G:%d B:%d", r, g, b);
+                RECT txtRect = {44, 3, rc.right - 6, 28};
+                DrawTextW(memDC, text, -1, &txtRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(memDC, oldFont);
+                DeleteObject(hFont);
+
+                // Guide text (two lines)
+                HFONT hGuideFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                               0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+                HFONT oldGuideFont = (HFONT)SelectObject(memDC, hGuideFont);
+                SetTextColor(memDC, th.Text.ToCOLORREF());
+                RECT guideRect1 = {6, 38, rc.right - 6, 52};
+                DrawTextW(memDC, L"Arrow:Nudge Ctrl+Wheel:Zoom", -1, &guideRect1, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                RECT guideRect2 = {6, 52, rc.right - 6, 66};
+                DrawTextW(memDC, L"LMB:Pick Esc/RMB:Exit", -1, &guideRect2, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(memDC, oldGuideFont);
+                DeleteObject(hGuideFont);
+
+                // Border
+                bp = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                oldPen = (HPEN)SelectObject(memDC, bp);
+                oldBrush = (HBRUSH)SelectObject(memDC, GetStockObject(NULL_BRUSH));
+                RoundRect(memDC, rc.left, rc.top, rc.right, rc.bottom, 6, 6);
+                SelectObject(memDC, oldPen);
+                SelectObject(memDC, oldBrush);
+                DeleteObject(bp);
+
+                BitBlt(hdc, 0, 0, rc.right, rc.bottom, memDC, 0, 0, SRCCOPY);
+                SelectObject(memDC, oldBmp);
+                DeleteObject(memBmp);
+                DeleteDC(memDC);
+
+                EndPaint(hwnd, &ps);
+                return 0;
+            }
+
+            case WM_ERASEBKGND:
+                return 1;
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
+        }
+
+        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+        {
+            if (msg == WM_NCCREATE)
+            {
+                auto *pCreate = (CREATESTRUCT *)lp;
+                auto *pData = (DialogData *)pCreate->lpCreateParams;
+                SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pData);
+                return DefWindowProcW(hwnd, msg, wp, lp);
+            }
+            auto *pData = (DialogData *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (!pData)
+                return DefWindowProcW(hwnd, msg, wp, lp);
+
+            const int PAD = 16, WSIZE = 220, WX = PAD + 10, WY = PAD + 30;
+            const int EX = WX + WSIZE + 24, EH = 24, GAP = 4;
+            const int LW = 16; // label width
+            const int SLIDER_X = PAD + 10, SLIDER_H = 24;
+
+            switch (msg)
+            {
+            case WM_CREATE:
+            {
+                Controls::InitWindowColor(hwnd);
+                pData->hwnd = hwnd;
+                pData->hFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                           0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+                auto hInst = GetModuleHandleW(nullptr);
+
+                auto mkEd = [&](int id, int x, int y, int w)
+                {
+                    HWND he = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_RIGHT | WS_TABSTOP,
+                                              x, y, w, EH, hwnd, (HMENU)(INT_PTR)id, hInst, nullptr);
+                    if (pData->hFont)
+                        SendMessage(he, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                    SendMessage(he, EM_SETLIMITTEXT, 4, 0);
+                    Controls::Edit::Subclass(he);
+                    return he;
+                };
+                auto mkLb = [&](int x, int y, const wchar_t *t)
+                {
+                    HWND hl = CreateWindowExW(0, L"STATIC", t, WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE,
+                                              x, y, LW, EH, hwnd, nullptr, hInst, nullptr);
+                    if (pData->hFont)
+                        SendMessage(hl, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                    return hl;
+                };
+
+                // Single-column layout: label + narrow edit + slider on each row
+                const int EDIT_W_NARROW = 55;
+                RECT clCreate;
+                GetClientRect(hwnd, &clCreate);
+                int fieldRight = clCreate.right - PAD;
+                auto rowY = [&](int row)
+                { return WY + row * (EH + GAP); };
+
+                // Helper: compute slider rect for a given row
+                const int EDIT_SLIDER_GAP = 10;
+                auto sliderRect = [&](int row) -> RECT {
+                    int editEnd = (EX + LW + GAP + EDIT_W_NARROW + EDIT_SLIDER_GAP);
+                    return {editEnd, rowY(row), fieldRight, rowY(row) + EH};
+                };
+
+                mkLb(EX, rowY(0), L"R");
+                pData->hR = mkEd(3001, EX + LW + GAP, rowY(0), EDIT_W_NARROW);
+                pData->sliderR.SetupInt(0, 255, &pData->curR, sliderRect(0));
+                mkLb(EX, rowY(1), L"G");
+                pData->hG = mkEd(3002, EX + LW + GAP, rowY(1), EDIT_W_NARROW);
+                pData->sliderG.SetupInt(0, 255, &pData->curG, sliderRect(1));
+                mkLb(EX, rowY(2), L"B");
+                pData->hB = mkEd(3003, EX + LW + GAP, rowY(2), EDIT_W_NARROW);
+                pData->sliderB.SetupInt(0, 255, &pData->curB, sliderRect(2));
+                if (pData->enableAlpha)
+                {
+                    mkLb(EX, rowY(3), L"A");
+                    pData->hA = mkEd(3004, EX + LW + GAP, rowY(3), EDIT_W_NARROW);
+                    pData->sliderA.SetupInt(0, 255, &pData->curA, sliderRect(3));
+                }
+                int hslRow = pData->enableAlpha ? 4 : 3;
+                mkLb(EX, rowY(hslRow), L"H");
+                pData->hH = mkEd(3011, EX + LW + GAP, rowY(hslRow), EDIT_W_NARROW);
+                pData->sliderH.SetupDouble(0, 360, &pData->hue, 1.0, sliderRect(hslRow));
+                mkLb(EX, rowY(hslRow + 1), L"S");
+                pData->hS = mkEd(3012, EX + LW + GAP, rowY(hslRow + 1), EDIT_W_NARROW);
+                pData->sliderS.SetupDouble(0, 100, &pData->sat, 100.0, sliderRect(hslRow + 1));
+                mkLb(EX, rowY(hslRow + 2), L"L");
+                pData->hL = mkEd(3013, EX + LW + GAP, rowY(hslRow + 2), EDIT_W_NARROW);
+                pData->sliderL.SetupDouble(0, 100, &pData->light, 100.0, sliderRect(hslRow + 2));
+
+                mkLb(EX, rowY(hslRow + 3), L"#");
+                pData->hHex = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_UPPERCASE | WS_TABSTOP,
+                                              EX + LW + GAP, rowY(hslRow + 3), EDIT_W_NARROW, EH, hwnd, (HMENU)3005, hInst, nullptr);
+                if (pData->hFont)
+                    SendMessage(pData->hHex, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                SendMessage(pData->hHex, EM_SETLIMITTEXT, 9, 0);
+                Controls::Edit::Subclass(pData->hHex);
+
+                // Create checkerboard pattern brush (12x12, 6x6 cells)
+                {
+                    HBITMAP hChkBmp = CreateBitmap(12, 12, 1, 1, nullptr); // monochrome
+                    HDC chkDC = CreateCompatibleDC(nullptr);
+                    HBITMAP oldChk = (HBITMAP)SelectObject(chkDC, hChkBmp);
+                    for (int y = 0; y < 12; y++)
+                        for (int x = 0; x < 12; x++)
+                        {
+                            SetPixelV(chkDC, x, y, ((x / 6) + (y / 6)) % 2 ? RGB(255, 255, 255) : RGB(0, 0, 0));
+                        }
+                    SelectObject(chkDC, oldChk);
+                    DeleteDC(chkDC);
+                    pData->hCheckerBrush = CreatePatternBrush(hChkBmp);
+                    DeleteObject(hChkBmp);
+                }
+                pData->SyncFromRgbToInputs();
+
+                int btnW = 80, btnH = 28;
+                int btnYC = WY + WSIZE + (pData->enableAlpha ? 165 : 133);
+                int btnRightX = clCreate.right - PAD;
+                pData->hBtnOK = CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+                                                btnRightX - btnW * 2 - 8, btnYC, btnW, btnH, hwnd, (HMENU)IDOK, hInst, nullptr);
+                Controls::Button::Subclass(pData->hBtnOK);
+                pData->hBtnCancel = CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+                                                    btnRightX - btnW, btnYC, btnW, btnH, hwnd, (HMENU)IDCANCEL, hInst, nullptr);
+                Controls::Button::Subclass(pData->hBtnCancel);
+
+                // Eyedropper (screen color picker) button
+                pData->hBtnEye = CreateWindowExW(0, L"BUTTON", L"Pick", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+                                                 btnRightX - btnW * 3 - 16, btnYC, btnW, btnH, hwnd, (HMENU)3020, hInst, nullptr);
+                Controls::Button::Subclass(pData->hBtnEye);
+
+                if (pData->hFont)
+                {
+                    SendMessage(pData->hBtnOK, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                    SendMessage(pData->hBtnCancel, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                    SendMessage(pData->hBtnEye, WM_SETFONT, (WPARAM)pData->hFont, TRUE);
+                }
+                return 0;
+            }
+
+            case WM_CTLCOLOREDIT:
+            {
+                HDC hdc = (HDC)wp;
+                auto &th = GetTheme();
+                SetBkColor(hdc, th.SecondaryBackground.ToCOLORREF());
+                SetTextColor(hdc, th.Text.ToCOLORREF());
+                static HBRUSH hBr = CreateSolidBrush(th.SecondaryBackground.ToCOLORREF());
+                return (LRESULT)hBr;
+            }
+            case WM_CTLCOLORSTATIC:
+            {
+                HDC hdc = (HDC)wp;
+                auto &th = GetTheme();
+                SetBkColor(hdc, th.PrimaryBackground.ToCOLORREF());
+                SetTextColor(hdc, th.Text.ToCOLORREF());
+                static HBRUSH hStBr = CreateSolidBrush(th.PrimaryBackground.ToCOLORREF());
+                return (LRESULT)hStBr;
+            }
+
+            case WM_SIZE:
+            {
+                int btnW = 80, btnH = 28;
+                RECT cl5;
+                GetClientRect(hwnd, &cl5);
+                int btnYC = cl5.bottom - btnH - 14;
+                int btnRightX = cl5.right - PAD;
+                if (pData->hBtnOK)
+                {
+                    SetWindowPos(pData->hBtnEye, nullptr, btnRightX - btnW * 3 - 16, btnYC, btnW, btnH, SWP_NOZORDER);
+                    SetWindowPos(pData->hBtnCancel, nullptr, btnRightX - btnW, btnYC, btnW, btnH, SWP_NOZORDER);
+                    SetWindowPos(pData->hBtnOK, nullptr, btnRightX - btnW * 2 - 8, btnYC, btnW, btnH, SWP_NOZORDER);
+                }
+                return 0;
+            }
+
+            case WM_PAINT:
+            {
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd, &ps);
+                RECT cl;
+                GetClientRect(hwnd, &cl);
+
+                auto &th = GetTheme();
+
+                // Reuse cached double buffer — avoids per-frame GDI alloc
+                if (!pData->hMemDC || cl.right != pData->memW || cl.bottom != pData->memH)
+                {
+                    if (pData->hMemBmp)
+                    {
+                        DeleteObject(pData->hMemBmp);
+                        pData->hMemBmp = nullptr;
+                    }
+                    if (pData->hMemDC)
+                    {
+                        DeleteDC(pData->hMemDC);
+                        pData->hMemDC = nullptr;
+                    }
+                    pData->hMemDC = CreateCompatibleDC(hdc);
+                    pData->hMemBmp = CreateCompatibleBitmap(hdc, cl.right, cl.bottom);
+                    SelectObject(pData->hMemDC, pData->hMemBmp);
+                    pData->memW = cl.right;
+                    pData->memH = cl.bottom;
+                }
+                HDC memDC = pData->hMemDC;
+
+                HBRUSH bgBr = CreateSolidBrush(th.PrimaryBackground.ToCOLORREF());
+                FillRect(memDC, &cl, bgBr);
+                DeleteObject(bgBr);
+
+                int r = pData->curR.load(), g = pData->curG.load(), b = pData->curB.load(), a = pData->curA.load();
+                double hue = pData->hue.load(), sat = pData->sat.load(), light = pData->light.load();
+                int cx2 = WX + WSIZE / 2, cy2 = WY + WSIZE / 2, radius = WSIZE / 2 - 4;
+
+                // ── Draw cached circular colour wheel (only rebuild when L changes) ──
+                if (!pData->hCachedDC || std::abs(pData->cachedLight - light) > 1e-9)
+                {
+                    if (pData->hCachedWheel)
+                    {
+                        DeleteObject(pData->hCachedWheel);
+                        pData->hCachedWheel = nullptr;
+                    }
+                    if (pData->hCachedDC)
+                    {
+                        DeleteDC(pData->hCachedDC);
+                        pData->hCachedDC = nullptr;
+                    }
+
+                    BITMAPINFO bmi = {};
+                    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                    bmi.bmiHeader.biWidth = WSIZE;
+                    bmi.bmiHeader.biHeight = -WSIZE;
+                    bmi.bmiHeader.biPlanes = 1;
+                    bmi.bmiHeader.biBitCount = 32;
+                    bmi.bmiHeader.biCompression = BI_RGB;
+                    BYTE *bits = nullptr;
+                    pData->hCachedWheel = CreateDIBSection(memDC, &bmi, DIB_RGB_COLORS, (void **)&bits, nullptr, 0);
+                    pData->hCachedDC = CreateCompatibleDC(memDC);
+                    SelectObject(pData->hCachedDC, pData->hCachedWheel);
+                    for (int y = 0; y < WSIZE; y++)
+                        for (int x = 0; x < WSIZE; x++)
+                        {
+                            int dx = x - WSIZE / 2, dy = y - WSIZE / 2;
+                            double dist = std::sqrt((double)(dx * dx + dy * dy));
+                            int idx = (y * WSIZE + x) * 4;
+                            if (dist <= radius)
+                            {
+                                double ang = std::atan2((double)dy, (double)dx) * 180.0 / 3.14159265;
+                                if (ang < 0)
+                                    ang += 360;
+                                double st2 = dist / radius;
+                                int rr, gg, bb;
+                                HslToRgb(ang, st2, light, rr, gg, bb);
+                                bits[idx + 0] = (BYTE)bb;
+                                bits[idx + 1] = (BYTE)gg;
+                                bits[idx + 2] = (BYTE)rr;
+                                bits[idx + 3] = 255;
+                            }
+                            else
+                            {
+                                bits[idx + 0] = GetBValue(th.PrimaryBackground.ToCOLORREF());
+                                bits[idx + 1] = GetGValue(th.PrimaryBackground.ToCOLORREF());
+                                bits[idx + 2] = GetRValue(th.PrimaryBackground.ToCOLORREF());
+                                bits[idx + 3] = 255;
+                            }
+                        }
+                    pData->cachedLight = light;
+                }
+                BitBlt(memDC, WX, WY, WSIZE, WSIZE, pData->hCachedDC, 0, 0, SRCCOPY);
+
+                // Wheel indicator (white+black ring)
+                double selAng = hue * 3.14159265 / 180.0;
+                int sx2 = cx2 + (int)(std::cos(selAng) * sat * radius);
+                int sy2 = cy2 + (int)(std::sin(selAng) * sat * radius);
+                HPEN hW = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));
+                HPEN hB = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+                auto oP = (HPEN)SelectObject(memDC, hW);
+                SelectObject(memDC, GetStockObject(NULL_BRUSH));
+                Ellipse(memDC, sx2 - 7, sy2 - 7, sx2 + 7, sy2 + 7);
+                SelectObject(memDC, hB);
+                Ellipse(memDC, sx2 - 5, sy2 - 5, sx2 + 5, sy2 + 5);
+                SelectObject(memDC, oP);
+                DeleteObject(hW);
+                DeleteObject(hB);
+
+                // ── Slider helper: render gradient via DIBSection (fast) ──
+                auto DrawSliderTrack = [&](const RECT &sr, bool isAlpha2, int cr2, int cg2, int cb2)
+                {
+                    int sw2 = sr.right - sr.left, ty2 = sr.top + (sr.bottom - sr.top) / 2, th2 = 12;
+                    BITMAPINFO bmi2 = {};
+                    bmi2.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                    bmi2.bmiHeader.biWidth = sw2;
+                    bmi2.bmiHeader.biHeight = -th2;
+                    bmi2.bmiHeader.biPlanes = 1;
+                    bmi2.bmiHeader.biBitCount = 32;
+                    bmi2.bmiHeader.biCompression = BI_RGB;
+                    BYTE *bits2 = nullptr;
+                    HBITMAP hbm2 = CreateDIBSection(memDC, &bmi2, DIB_RGB_COLORS, (void **)&bits2, nullptr, 0);
+                    HDC sDC = CreateCompatibleDC(memDC);
+                    SelectObject(sDC, hbm2);
+                    for (int y = 0; y < th2; y++)
+                        for (int x = 0; x < sw2; x++)
+                        {
+                            double t = (double)x / (sw2 - 1);
+                            int idx = (y * sw2 + x) * 4;
+                            if (isAlpha2)
+                            {
+                                int chk = ((x / 6) + (y / 6)) % 2;
+                                int bgR = chk ? 200 : 140, bgG = chk ? 200 : 140, bgB = chk ? 200 : 140;
+                                double af2 = t;
+                                bits2[idx + 0] = (BYTE)(cb2 * af2 + bgB * (1.0 - af2));
+                                bits2[idx + 1] = (BYTE)(cg2 * af2 + bgG * (1.0 - af2));
+                                bits2[idx + 2] = (BYTE)(cr2 * af2 + bgR * (1.0 - af2));
+                            }
+                            else
+                            {
+                                int rr, gg, bb;
+                                HslToRgb(hue, sat, t, rr, gg, bb);
+                                bits2[idx + 0] = (BYTE)bb;
+                                bits2[idx + 1] = (BYTE)gg;
+                                bits2[idx + 2] = (BYTE)rr;
+                            }
+                            bits2[idx + 3] = 255;
+                        }
+                    BitBlt(memDC, sr.left, ty2 - th2 / 2, sw2, th2, sDC, 0, 0, SRCCOPY);
+                    DeleteDC(sDC);
+                    DeleteObject(hbm2);
+                    HPEN bp2 = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                    auto op2 = (HPEN)SelectObject(memDC, bp2);
+                    SelectObject(memDC, GetStockObject(NULL_BRUSH));
+                    RoundRect(memDC, sr.left, ty2 - th2 / 2, sr.right, ty2 + th2 / 2, 4, 4);
+                    SelectObject(memDC, op2);
+                    DeleteObject(bp2);
+                };
+
+                // ── Lightness slider ──
+                RECT lsRc = {SLIDER_X, WY + WSIZE + 20, cl.right - PAD, WY + WSIZE + 20 + SLIDER_H};
+                DrawSliderTrack(lsRc, false, r, g, b);
+                int lx = lsRc.left + (int)(light * (lsRc.right - lsRc.left - 1));
+                int ly = (lsRc.top + lsRc.bottom) / 2;
+                {
+                    HPEN tP2 = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                    HBRUSH tB2 = CreateSolidBrush(RGB(255, 255, 255));
+                    auto oP2 = (HPEN)SelectObject(memDC, tP2);
+                    auto oB2 = (HBRUSH)SelectObject(memDC, tB2);
+                    RoundRect(memDC, lx - 5, ly - 8, lx + 5, ly + 8, 3, 3);
+                    SelectObject(memDC, oP2);
+                    SelectObject(memDC, oB2);
+                    DeleteObject(tP2);
+                    DeleteObject(tB2);
+                }
+
+                // ── Alpha slider (optional) ──
+                RECT aRc = {SLIDER_X, lsRc.bottom + 8, cl.right - PAD, lsRc.bottom + 8 + SLIDER_H};
+                if (pData->enableAlpha)
+                {
+                    DrawSliderTrack(aRc, true, r, g, b);
+                    int ax2 = aRc.left + (int)((a / 255.0) * (aRc.right - aRc.left - 1));
+                    {
+                        HPEN tP2 = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                        HBRUSH tB2 = CreateSolidBrush(RGB(255, 255, 255));
+                        auto oP2 = (HPEN)SelectObject(memDC, tP2);
+                        auto oB2 = (HBRUSH)SelectObject(memDC, tB2);
+                        RoundRect(memDC, ax2 - 5, (aRc.top + aRc.bottom) / 2 - 8, ax2 + 5, (aRc.top + aRc.bottom) / 2 + 8, 3, 3);
+                        SelectObject(memDC, oP2);
+                        SelectObject(memDC, oB2);
+                        DeleteObject(tP2);
+                        DeleteObject(tB2);
+                    }
+                }
+
+                // ── Draw field sliders (gradient track + thumb) ──
+                auto DrawFieldSliderTrack = [&](const auto &fs,
+                    int sR, int sG, int sB, int eR, int eG, int eB, bool isHue)
+                {
+                    int fsl = fs.rect.left, fst = fs.rect.top + (fs.rect.bottom - fs.rect.top) / 2;
+                    int fsw = fs.rect.right - fs.rect.left, fth = 12;
+                    BITMAPINFO bmi3={}; bmi3.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+                    bmi3.bmiHeader.biWidth=fsw; bmi3.bmiHeader.biHeight=-fth;
+                    bmi3.bmiHeader.biPlanes=1; bmi3.bmiHeader.biBitCount=32; bmi3.bmiHeader.biCompression=BI_RGB;
+                    BYTE *bits3=nullptr;
+                    HBITMAP hbm3=CreateDIBSection(memDC,&bmi3,DIB_RGB_COLORS,(void**)&bits3,nullptr,0);
+                    HDC sDC3=CreateCompatibleDC(memDC); SelectObject(sDC3,hbm3);
+                    for(int y=0; y<fth; y++) for(int x=0; x<fsw; x++){
+                        double t=(double)x/(fsw-1);
+                        int idx=(y*fsw+x)*4;
+                        if(isHue){
+                            int rr,gg,bb; HslToRgb(t*360.0, 1.0, 0.5, rr, gg, bb);
+                            bits3[idx+0]=(BYTE)bb; bits3[idx+1]=(BYTE)gg;
+                            bits3[idx+2]=(BYTE)rr; bits3[idx+3]=255;
+                        } else {
+                            int rr=(int)(sR + t*(eR-sR));
+                            int gg=(int)(sG + t*(eG-sG));
+                            int bb=(int)(sB + t*(eB-sB));
+                            bits3[idx+0]=(BYTE)std::clamp(bb,0,255);
+                            bits3[idx+1]=(BYTE)std::clamp(gg,0,255);
+                            bits3[idx+2]=(BYTE)std::clamp(rr,0,255);
+                            bits3[idx+3]=255;
+                        }
+                    }
+                    BitBlt(memDC, fsl, fst-fth/2, fsw, fth, sDC3, 0, 0, SRCCOPY);
+                    DeleteDC(sDC3); DeleteObject(hbm3);
+                    HPEN bp3=CreatePen(PS_SOLID,1,th.ControlFrame.ToCOLORREF());
+                    auto op3=(HPEN)SelectObject(memDC,bp3);
+                    SelectObject(memDC,GetStockObject(NULL_BRUSH));
+                    RoundRect(memDC, fsl, fst-fth/2, fsl+fsw, fst+fth/2, 3, 3);
+                    SelectObject(memDC,op3); DeleteObject(bp3);
+                    // Thumb
+                    int tx = fs.GetThumbPos();
+                    HPEN tp3=CreatePen(PS_SOLID,1,th.ControlFrame.ToCOLORREF());
+                    HBRUSH tb3=CreateSolidBrush(RGB(255,255,255));
+                    auto otp=(HPEN)SelectObject(memDC,tp3);
+                    auto otb=(HBRUSH)SelectObject(memDC,tb3);
+                    RoundRect(memDC, tx, fst-fth/2-2, tx+fs.thumbSize, fst+fth/2+2, 3, 3);
+                    SelectObject(memDC,otp); SelectObject(memDC,otb);
+                    DeleteObject(tp3); DeleteObject(tb3);
+                };
+
+                // Render each field slider with its unique gradient
+                DrawFieldSliderTrack(pData->sliderR, 0,0,0, 255,0,0, false);
+                DrawFieldSliderTrack(pData->sliderG, 0,0,0, 0,255,0, false);
+                DrawFieldSliderTrack(pData->sliderB, 0,0,0, 0,0,255, false);
+                if(pData->enableAlpha)
+                    DrawFieldSliderTrack(pData->sliderA, 0,0,0, 255,255,255, false);
+                DrawFieldSliderTrack(pData->sliderH, 0,0,0, 0,0,0, true); // rainbow
+                // S: gray → saturated at current hue
+                { int sr,sg,sb; HslToRgb(hue, 1.0, light, sr, sg, sb);
+                  int gray = (int)(light*255);
+                  DrawFieldSliderTrack(pData->sliderS, gray,gray,gray, sr,sg,sb, false); }
+                // L: black → white
+                DrawFieldSliderTrack(pData->sliderL, 0,0,0, 255,255,255, false);
+
+                // ── Color preview (DIB-based) ──
+                int pvY = (pData->enableAlpha ? aRc.bottom : lsRc.bottom) + 14, pvW = (cl.right - SLIDER_X * 2 - 20) / 2, pvH = 36;
+                int oldR_ = pData->oldR.load(), oldG_ = pData->oldG.load(), oldB_ = pData->oldB.load(), oldA_ = pData->oldA.load();
+                auto drSw = [&](int px, int py, int pw, int ph, int cr2, int cg2, int cb2, int ca2, const wchar_t *lb)
+                {
+                    BITMAPINFO bmi2 = {};
+                    bmi2.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                    bmi2.bmiHeader.biWidth = pw;
+                    bmi2.bmiHeader.biHeight = -ph;
+                    bmi2.bmiHeader.biPlanes = 1;
+                    bmi2.bmiHeader.biBitCount = 32;
+                    bmi2.bmiHeader.biCompression = BI_RGB;
+                    BYTE *bits2 = nullptr;
+                    HBITMAP hbm2 = CreateDIBSection(memDC, &bmi2, DIB_RGB_COLORS, (void **)&bits2, nullptr, 0);
+                    HDC swDC = CreateCompatibleDC(memDC);
+                    SelectObject(swDC, hbm2);
+                    double af2 = ca2 / 255.0;
+                    for (int y = 0; y < ph; y++)
+                        for (int x = 0; x < pw; x++)
+                        {
+                            int idx = (y * pw + x) * 4;
+                            int chk = ((x / 6) + (y / 6)) % 2;
+                            int bgR = chk ? 200 : 140, bgG = chk ? 200 : 140, bgB = chk ? 200 : 140;
+                            bits2[idx + 0] = (BYTE)(cb2 * af2 + bgB * (1.0 - af2));
+                            bits2[idx + 1] = (BYTE)(cg2 * af2 + bgG * (1.0 - af2));
+                            bits2[idx + 2] = (BYTE)(cr2 * af2 + bgR * (1.0 - af2));
+                            bits2[idx + 3] = 255;
+                        }
+                    BitBlt(memDC, px, py, pw, ph, swDC, 0, 0, SRCCOPY);
+                    DeleteDC(swDC);
+                    DeleteObject(hbm2);
+                    HPEN bp2 = CreatePen(PS_SOLID, 1, th.ControlFrame.ToCOLORREF());
+                    auto op2 = (HPEN)SelectObject(memDC, bp2);
+                    SelectObject(memDC, GetStockObject(NULL_BRUSH));
+                    Rectangle(memDC, px, py, px + pw, py + ph);
+                    SelectObject(memDC, op2);
+                    DeleteObject(bp2);
+                    SetTextColor(memDC, th.Text.ToCOLORREF());
+                    SetBkMode(memDC, TRANSPARENT);
+                    HFONT oldFont = (HFONT)SelectObject(memDC, pData->hFont);
+                    RECT lr2 = {px, py + ph + 2, px + pw, py + ph + 24};
+                    DrawTextW(memDC, lb, -1, &lr2, DT_CENTER | DT_TOP | DT_SINGLELINE);
+                    SelectObject(memDC, oldFont);
+                };
+                drSw(SLIDER_X, pvY, pvW, pvH, oldR_, oldG_, oldB_, oldA_, L"Original");
+                drSw(SLIDER_X + pvW + 20, pvY, pvW, pvH, r, g, b, a, L"New");
+
+                // ── Title ──
+                SetTextColor(memDC, th.Text.ToCOLORREF());
+                SetBkMode(memDC, TRANSPARENT);
+                HFONT hTF = CreateFontW(-16, 0, 0, 0, FW_SEMIBOLD, 0, 0, 0, DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+                auto of_ = (HFONT)SelectObject(memDC, hTF);
+                RECT tRc = {PAD, 6, 300, 28};
+                DrawTextW(memDC, L"Color Picker", -1, &tRc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(memDC, of_);
+                DeleteObject(hTF);
+
+                BitBlt(hdc, 0, 0, cl.right, cl.bottom, memDC, 0, 0, SRCCOPY);
+                EndPaint(hwnd, &ps);
+                return 0;
+            }
+
+            case WM_ERASEBKGND:
+                return 1;
+
+            case WM_LBUTTONDOWN:
+            {
+                int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
+                SetCapture(hwnd);
+                // Wheel
+                int cxc = WX + WSIZE / 2, cyc = WY + WSIZE / 2, rad = WSIZE / 2 - 4;
+                double dx = mx - cxc, dy = my - cyc, dist = std::sqrt(dx * dx + dy * dy);
+                if (dist <= rad && mx >= WX && mx < WX + WSIZE && my >= WY && my < WY + WSIZE)
+                {
+                    pData->draggingCanvas = true;
+                    double ang = std::atan2(dy, dx) * 180.0 / 3.14159265;
+                    if (ang < 0)
+                        ang += 360;
+                    pData->hue.store(ang);
+                    pData->sat.store(std::min(dist / rad, 1.0));
+                    int rr, gg, bb;
+                    HslToRgb(ang, pData->sat.load(), pData->light.load(), rr, gg, bb);
+                    pData->curR.store(rr);
+                    pData->curG.store(gg);
+                    pData->curB.store(bb);
+                    pData->SyncFromRgbToInputs();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                // Lightness slider
+                RECT lsRc = {SLIDER_X, WY + WSIZE + 20, 0, WY + WSIZE + 20 + SLIDER_H};
+                RECT cl2;
+                GetClientRect(hwnd, &cl2);
+                lsRc.right = cl2.right - PAD;
+                if (mx >= lsRc.left && mx < lsRc.right && my >= lsRc.top && my < lsRc.bottom)
+                {
+                    pData->draggingHue = true;
+                    double lv = (std::max)(0.0, (std::min)(1.0, (double)(mx - lsRc.left) / (lsRc.right - lsRc.left - 1)));
+                    pData->light.store(lv);
+                    int rr, gg, bb;
+                    HslToRgb(pData->hue.load(), pData->sat.load(), lv, rr, gg, bb);
+                    pData->curR.store(rr);
+                    pData->curG.store(gg);
+                    pData->curB.store(bb);
+                    pData->SyncFromRgbToInputs();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                // Alpha slider (optional)
+                if (pData->enableAlpha)
+                {
+                    RECT aRc = {SLIDER_X, lsRc.bottom + 8, 0, lsRc.bottom + 8 + SLIDER_H};
+                    aRc.right = cl2.right - PAD;
+                    if (mx >= aRc.left && mx < aRc.right && my >= aRc.top && my < aRc.bottom)
+                    {
+                        pData->draggingAlpha = true;
+                        int aa2 = (int)((std::max)(0.0, (std::min)(1.0, (double)(mx - aRc.left) / (aRc.right - aRc.left - 1))) * 255);
+                        pData->curA.store(aa2);
+                        pData->SyncFromRgbToInputs();
+                        InvalidateRect(hwnd, nullptr, TRUE);
+                        return 0;
+                    }
+                }
+                // ── Field sliders hit test ──
+                {
+                    auto hitField = [&](auto &fs, bool isHSL) -> bool {
+                        if(mx>=fs.rect.left && mx<fs.rect.right && my>=fs.rect.top && my<fs.rect.bottom){
+                            fs.dragging = true;
+                            int dv = fs.DisplayFromPos(mx);
+                            fs.SetFromDisplay(dv);
+                            if(isHSL){ // H/S/L → recalc RGB
+                                double hh=pData->hue.load(), ss=pData->sat.load(), ll=pData->light.load();
+                                int rr,gg,bb; HslToRgb(hh,ss,ll,rr,gg,bb);
+                                pData->curR.store(rr); pData->curG.store(gg); pData->curB.store(bb);
+                            } else { // R/G/B → recalc HSL
+                                int r2=pData->curR.load(),g2=pData->curG.load(),b2=pData->curB.load();
+                                auto hsl2=RgbToHsl(r2,g2,b2);
+                                pData->hue.store(hsl2.h); pData->sat.store(hsl2.s); pData->light.store(hsl2.l);
+                            }
+                            pData->SyncFromRgbToInputs();
+                            InvalidateRect(hwnd,nullptr,TRUE);
+                            return true;
+                        }
+                        return false;
+                    };
+                    if(hitField(pData->sliderR,false)||hitField(pData->sliderG,false)||hitField(pData->sliderB,false)
+                        ||(pData->enableAlpha && hitField(pData->sliderA,false))
+                        ||hitField(pData->sliderH,true)||hitField(pData->sliderS,true)||hitField(pData->sliderL,true))
+                        return 0;
+                }
+                break;
+            }
+
+            case WM_MOUSEMOVE:
+            {
+                if (pData->draggingCanvas.load())
+                {
+                    int mx2 = GET_X_LPARAM(lp), my2 = GET_Y_LPARAM(lp);
+                    int cxc2 = WX + WSIZE / 2, cyc2 = WY + WSIZE / 2, r2 = WSIZE / 2 - 4;
+                    double dx2 = mx2 - cxc2, dy2 = my2 - cyc2, dist2 = std::sqrt(dx2 * dx2 + dy2 * dy2);
+                    if (dist2 > r2)
+                        dist2 = r2;
+                    double ang2 = std::atan2(dy2, dx2) * 180.0 / 3.14159265;
+                    if (ang2 < 0)
+                        ang2 += 360;
+                    pData->hue.store(ang2);
+                    pData->sat.store(dist2 / r2);
+                    int rr, gg, bb;
+                    HslToRgb(ang2, pData->sat.load(), pData->light.load(), rr, gg, bb);
+                    pData->curR.store(rr);
+                    pData->curG.store(gg);
+                    pData->curB.store(bb);
+                    pData->SyncFromRgbToInputs();
+                    pData->CallCallback(DynamicColorCallbackMessageType::Dragging);
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                if (pData->draggingHue.load())
+                {
+                    int mx2 = GET_X_LPARAM(lp);
+                    RECT lsRc2 = {SLIDER_X, WY + WSIZE + 20, 0, WY + WSIZE + 20 + SLIDER_H};
+                    RECT cl3;
+                    GetClientRect(hwnd, &cl3);
+                    lsRc2.right = cl3.right - PAD;
+                    double lv2 = (std::max)(0.0, (std::min)(1.0, (double)(mx2 - lsRc2.left) / (lsRc2.right - lsRc2.left - 1)));
+                    pData->light.store(lv2);
+                    int rr, gg, bb;
+                    HslToRgb(pData->hue.load(), pData->sat.load(), lv2, rr, gg, bb);
+                    pData->curR.store(rr);
+                    pData->curG.store(gg);
+                    pData->curB.store(bb);
+                    pData->SyncFromRgbToInputs();
+                    pData->CallCallback(DynamicColorCallbackMessageType::Dragging);
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                if (pData->enableAlpha && pData->draggingAlpha.load())
+                {
+                    int mx2 = GET_X_LPARAM(lp);
+                    RECT aRc2 = {SLIDER_X, WY + WSIZE + 28, 0, WY + WSIZE + 28 + SLIDER_H};
+                    RECT cl4;
+                    GetClientRect(hwnd, &cl4);
+                    aRc2.right = cl4.right - PAD;
+                    int aa2 = (int)((std::max)(0.0, (std::min)(1.0, (double)(mx2 - aRc2.left) / (aRc2.right - aRc2.left - 1))) * 255);
+                    pData->curA.store(aa2);
+                    pData->SyncFromRgbToInputs();
+                    pData->CallCallback(DynamicColorCallbackMessageType::Dragging);
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                // ── Field sliders dragging ──
+                {
+                    auto dragField = [&](auto &fs, bool isHSL) -> bool {
+                        if(!fs.dragging) return false;
+                        int mx2 = GET_X_LPARAM(lp);
+                        int dv = fs.DisplayFromPos(mx2);
+                        fs.SetFromDisplay(dv);
+                        if(isHSL){
+                            double hh=pData->hue.load(), ss=pData->sat.load(), ll=pData->light.load();
+                            int rr,gg,bb; HslToRgb(hh,ss,ll,rr,gg,bb);
+                            pData->curR.store(rr); pData->curG.store(gg); pData->curB.store(bb);
+                        } else {
+                            int r2=pData->curR.load(),g2=pData->curG.load(),b2=pData->curB.load();
+                            auto hsl2=RgbToHsl(r2,g2,b2);
+                            pData->hue.store(hsl2.h); pData->sat.store(hsl2.s); pData->light.store(hsl2.l);
+                        }
+                        pData->SyncFromRgbToInputs();
+                        pData->CallCallback(DynamicColorCallbackMessageType::Dragging);
+                        InvalidateRect(hwnd,nullptr,TRUE);
+                        return true;
+                    };
+                    if(dragField(pData->sliderR,false)||dragField(pData->sliderG,false)||dragField(pData->sliderB,false)
+                        ||(pData->enableAlpha && dragField(pData->sliderA,false))
+                        ||dragField(pData->sliderH,true)||dragField(pData->sliderS,true)||dragField(pData->sliderL,true))
+                        return 0;
+                }
+                break;
+            }
+
+            case WM_LBUTTONUP:
+                pData->draggingCanvas.store(false);
+                pData->draggingHue.store(false);
+                pData->draggingAlpha.store(false);
+                pData->sliderR.dragging=false; pData->sliderG.dragging=false;
+                pData->sliderB.dragging=false; pData->sliderA.dragging=false;
+                pData->sliderH.dragging=false; pData->sliderS.dragging=false;
+                pData->sliderL.dragging=false;
+                pData->CallCallback(DynamicColorCallbackMessageType::Released);
+                ReleaseCapture();
+                break;
+
+            case WM_COMMAND:
+            {
+                int id = LOWORD(wp), code = HIWORD(wp);
+                if (id == IDOK)
+                {
+                    pData->parent->PostMessageToThread(ColorPickerMessageType::Close);
+                    return 0;
+                }
+                if (id == IDCANCEL)
+                {
+                    pData->curR.store(pData->oldR.load());
+                    pData->curG.store(pData->oldG.load());
+                    pData->curB.store(pData->oldB.load());
+                    pData->curA.store(pData->oldA.load());
+                    pData->CallCallback(DynamicColorCallbackMessageType::Released);
+                    pData->parent->PostMessageToThread(ColorPickerMessageType::Close);
+                    return 0;
+                }
+                if (id == 3020) // Eyedropper button
+                {
+                    if (!pData->eyeDropperMode.load())
+                    {
+                        auto hInst = GetModuleHandleW(nullptr);
+                        int scrW = GetSystemMetrics(SM_CXSCREEN);
+                        int scrH = GetSystemMetrics(SM_CYSCREEN);
+
+                        // Create full-screen overlay
+                        pData->hOverlay = CreateWindowExW(
+                            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+                            L"GL_Commdlg.EyeOverlayClass", nullptr,
+                            WS_POPUP,
+                            0, 0, scrW, scrH,
+                            nullptr, nullptr, hInst, pData);
+
+                        if (pData->hOverlay)
+                        {
+                            SetLayeredWindowAttributes(pData->hOverlay, 0, 1, LWA_ALPHA);
+
+                            // Create preview popup
+                            pData->hEyePreview = CreateWindowExW(
+                                WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                                L"GL_Commdlg.EyePreviewClass", nullptr,
+                                WS_POPUP,
+                                0, 0, 200, 72,
+                                nullptr, nullptr, hInst, pData);
+
+                            pData->eyeDropperMode.store(true);
+
+                            // Hide main dialog, show overlay + preview
+                            ShowWindow(hwnd, SW_HIDE);
+                            ShowWindow(pData->hOverlay, SW_SHOW);
+                            SetForegroundWindow(pData->hOverlay);
+                            SetFocus(pData->hOverlay);
+
+                            // Sample initial color at cursor
+                            POINT pt;
+                            GetCursorPos(&pt);
+                            HDC hdcScreen = GetDC(nullptr);
+                            COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                            ReleaseDC(nullptr, hdcScreen);
+                            pData->eyePreviewR = GetRValue(col);
+                            pData->eyePreviewG = GetGValue(col);
+                            pData->eyePreviewB = GetBValue(col);
+
+                            if (pData->hEyePreview)
+                            {
+                                SetWindowPos(pData->hEyePreview, HWND_TOPMOST, pt.x + 20, pt.y + 20, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+                                ShowWindow(pData->hEyePreview, SW_SHOWNOACTIVATE);
+                            }
+
+                            // Create magnifier window (initially hidden)
+                            pData->hMagnifier = CreateWindowExW(
+                                WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                                L"GL_Commdlg.EyeMagnifierClass", nullptr,
+                                WS_POPUP,
+                                0, 0, 150, 150,
+                                nullptr, nullptr, hInst, pData);
+                            pData->zoomLevel.store(2);
+                        }
+                    }
+                    return 0;
+                }
+                if (id == 3005 && code == EN_CHANGE && !pData->updatingInputs)
+                {
+                    // HEX was already handled in both ReadInputsToRgb and SyncFromRgbToInputs
+                }
+                if (code == EN_CHANGE && !pData->updatingInputs)
+                {
+                    pData->ReadInputsToRgb();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                }
+                return 0;
+            }
+
+            // ── Exit eyedropper mode ──
+            case WM_USER + 100:
+            {
+                bool picked = (wp != 0);
+
+                // Destroy magnifier
+                if (pData->hMagnifier && IsWindow(pData->hMagnifier))
+                {
+                    DestroyWindow(pData->hMagnifier);
+                    pData->hMagnifier = nullptr;
+                }
+                // Destroy preview
+                if (pData->hEyePreview && IsWindow(pData->hEyePreview))
+                {
+                    DestroyWindow(pData->hEyePreview);
+                    pData->hEyePreview = nullptr;
+                }
+                // Destroy overlay
+                if (pData->hOverlay && IsWindow(pData->hOverlay))
+                {
+                    DestroyWindow(pData->hOverlay);
+                    pData->hOverlay = nullptr;
+                }
+                pData->eyeDropperMode.store(false);
+
+                // Show main dialog
+                if (IsWindow(hwnd))
+                {
+                    ShowWindow(hwnd, SW_SHOW);
+                    SetForegroundWindow(hwnd);
+                    SetFocus(hwnd);
+                    pData->SyncFromRgbToInputs();
+                    pData->CallCallback(picked ? DynamicColorCallbackMessageType::Released
+                                               : DynamicColorCallbackMessageType::Dragging);
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                }
+                return 0;
+            }
+
+            case WM_CLOSE:
+                pData->parent->PostMessageToThread(ColorPickerMessageType::Close);
+                return 0;
+
+            case WM_DESTROY:
+                pData->isFinished.store(true);
+
+                // Cleanup eyedropper resources (if active)
+                if (pData->hMagnifier && IsWindow(pData->hMagnifier))
+                {
+                    DestroyWindow(pData->hMagnifier);
+                    pData->hMagnifier = nullptr;
+                }
+                if (pData->hEyePreview && IsWindow(pData->hEyePreview))
+                {
+                    DestroyWindow(pData->hEyePreview);
+                    pData->hEyePreview = nullptr;
+                }
+                if (pData->hOverlay && IsWindow(pData->hOverlay))
+                {
+                    DestroyWindow(pData->hOverlay);
+                    pData->hOverlay = nullptr;
+                }
+
+                if (pData->hMemDC)
+                    DeleteDC(pData->hMemDC);
+                if (pData->hMemBmp)
+                    DeleteObject(pData->hMemBmp);
+                if (pData->hCachedDC)
+                    DeleteDC(pData->hCachedDC);
+                if (pData->hCachedWheel)
+                    DeleteObject(pData->hCachedWheel);
+                if (pData->hCheckerBrush)
+                    DeleteObject(pData->hCheckerBrush);
+                if (pData->hFont)
+                    DeleteObject(pData->hFont);
+                pData->hwnd = nullptr;
+                PostQuitMessage(0);
+                return 0;
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
+        }
+
+        void DialogThreadProc()
+        {
+            if (!IsWindowClassRegistered())
+            {
+                threadRunning.store(false);
+                return;
+            }
+
+            int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
+            int ww = 520;
+            int wh = dialogData->enableAlpha ? 520 : 488;
+            int x = (sw - ww) / 2, y = (sh - wh) / 2;
+
+            HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_COMPOSITED, L"DynamicColorPickerClass",
+                                        dialogData->title.c_str(), WS_POPUP | WS_CAPTION | WS_SYSMENU,
+                                        x, y, ww, wh, dialogData->hwndParent, nullptr,
+                                        GetModuleHandleW(nullptr), dialogData.get());
+            if (!hwnd)
+            {
+                threadRunning.store(false);
+                return;
+            }
+            dialogData->hwnd = hwnd;
+            ShowWindow(hwnd, SW_SHOW);
+            UpdateWindow(hwnd);
+
+            MSG msg;
+            while (threadRunning.load())
+            {
+                {
+                    std::unique_lock<std::mutex> lock(messageMutex);
+                    messageCV.wait_for(lock, std::chrono::milliseconds(10),
+                                       [this]
+                                       { return !messageQueue.empty(); });
+                    while (!messageQueue.empty())
+                    {
+                        auto m = messageQueue.front();
+                        messageQueue.pop();
+                        lock.unlock();
+                        if (m.type == ColorPickerMessageType::Close)
+                        {
+                            dialogData->isFinished.store(true);
+                            threadRunning.store(false);
+                            if (dialogData->hwnd && IsWindow(dialogData->hwnd))
+                                DestroyWindow(dialogData->hwnd);
+                        }
+                        else if (m.type == ColorPickerMessageType::SetCallback)
+                        {
+                            dialogData->SetCallback(std::move(m.callback));
+                        }
+                        lock.lock();
+                    }
+                }
+                while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                {
+                    if (msg.message == WM_QUIT)
+                    {
+                        threadRunning.store(false);
+                        break;
+                    }
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+                if (!IsWindow(hwnd) || dialogData->isFinished.load())
+                    threadRunning.store(false);
+            }
+            if (IsWindow(hwnd))
+                DestroyWindow(hwnd);
+        }
+
+        void PostMessageToThread(ColorPickerMessageType type, int r = 0, int g = 0, int b = 0, int a = 255)
+        {
+            std::lock_guard<std::mutex> lock(messageMutex);
+            messageQueue.emplace(type, r, g, b, a);
+            messageCV.notify_one();
+        }
+
+        void PostCallbackToThread(std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> cb)
+        {
+            std::lock_guard<std::mutex> lock(messageMutex);
+            messageQueue.emplace(ColorPickerMessageType::SetCallback, std::move(cb));
+            messageCV.notify_one();
+        }
+
+    public:
+        /**
+         * @brief Create a dynamic color picker dialog
+         * @brief 创建颜色选择器动态对话框实例
+         * @param title Dialog title
+         * @param initialColor Initial color (ColorRGBA)
+         * @param hParent Parent window handle
+         */
+        DynamicColorPicker(const std::string &title, ColorRGBA initialColor = {255, 255, 255},
+                           bool enableAlpha = true,
+                           HWND hParent = nullptr,
+                           std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> callback = nullptr)
+            : dialogData(std::make_shared<DialogData>())
+        {
+            dialogData->parent = this;
+            dialogData->hwndParent = hParent;
+            dialogData->enableAlpha.store(enableAlpha);
+            dialogData->title = utf8ToWide(title);
+            if (callback)
+                dialogData->SetCallback(std::move(callback));
+            dialogData->curR.store(initialColor.r);
+            dialogData->curG.store(initialColor.g);
+            dialogData->curB.store(initialColor.b);
+            dialogData->curA.store(initialColor.a);
+            dialogData->oldR.store(initialColor.r);
+            dialogData->oldG.store(initialColor.g);
+            dialogData->oldB.store(initialColor.b);
+            dialogData->oldA.store(initialColor.a);
+            auto hsl = RgbToHsl(initialColor.r, initialColor.g, initialColor.b);
+            dialogData->hue.store(hsl.h);
+            dialogData->sat.store(hsl.s);
+            dialogData->light.store(hsl.l);
+            threadRunning.store(true);
+            dialogThread = std::make_unique<std::thread>([this]
+                                                         { DialogThreadProc(); });
+        }
+
+        ~DynamicColorPicker() override
+        {
+            Close();
+            if (dialogThread && dialogThread->joinable())
+                dialogThread->join();
+        }
+
+        DynamicColorPicker(DynamicColorPicker &&other) noexcept
+            : dialogThread(std::move(other.dialogThread)),
+              threadRunning(other.threadRunning.load()),
+              dialogData(std::move(other.dialogData)) {}
+
+        DynamicColorPicker &operator=(DynamicColorPicker &&other) noexcept
+        {
+            if (this != &other)
+            {
+                Close();
+                if (dialogThread && dialogThread->joinable())
+                    dialogThread->join();
+                dialogThread = std::move(other.dialogThread);
+                threadRunning = other.threadRunning.load();
+                dialogData = std::move(other.dialogData);
+            }
+            return *this;
+        }
+
+        void Show() override
+        {
+            if (dialogData && dialogData->hwnd)
+                ShowWindow(dialogData->hwnd, SW_SHOW);
+        }
+
+        void Close() override
+        {
+            if (threadRunning.load() && !dialogData->isFinished.load())
+                PostMessageToThread(ColorPickerMessageType::Close);
+        }
+
+        /**
+         * @brief Set a callback function for color change events
+         * @brief 设置颜色改变时的回调函数
+         * @param cb Callback function, receives (event type, current color) and returns potentially modified color
+         * @param cb 回调函数，接收(事件类型, 当前颜色)并返回可能被修改的颜色
+         */
+        void SetCallback(std::function<ColorRGBA(DynamicColorCallbackMessageType, ColorRGBA)> cb)
+        {
+            if (!threadRunning.load() || dialogData->isFinished.load())
+                return;
+            PostCallbackToThread(std::move(cb));
+        }
+
+        bool IsFinished() const { return dialogData ? dialogData->isFinished.load() : true; }
+
+        /** @brief Get the current color values */
+        ColorRGBA GetColor() const
+        {
+            if (!dialogData)
+                throw std::runtime_error("dialogData is NULL");
+            ColorRGBA color;
+            color.r = (uint8_t)dialogData->curR.load();
+            color.g = (uint8_t)dialogData->curG.load();
+            color.b = (uint8_t)dialogData->curB.load();
+            color.a = (uint8_t)dialogData->curA.load();
+            return color;
+        }
+
+        HWND GetWindowHandle() const { return dialogData ? dialogData->hwnd : nullptr; }
+    };
+
+    /**
+     * @brief Create a dynamic color picker dialog instance
+     * @brief 创建颜色选择器动态对话框实例
+     * @param title Dialog title
+     * @param title 对话框标题
+     * @param initialColor Initial color (ColorRGBA)
+     * @param initialColor 初始颜色 (ColorRGBA)
+     * @param enableAlpha Whether to enable alpha channel editing
+     * @param enableAlpha 是否启用 Alpha 通道编辑
+     * @param hParent Parent window handle
+     * @param hParent 父窗口句柄
+     * @return The created dynamic color picker instance
+     * @return 创建的颜色选择器动态对话框实例
+     */
+    DynamicColorPicker CreateDynamicColorPicker(const std::string &title,
+                                                ColorRGBA initialColor = {255, 255, 255},
+                                                bool enableAlpha = true,
+                                                HWND hParent = nullptr,
+                                                std::function<ColorRGBA(DynamicColorPicker::DynamicColorCallbackMessageType, ColorRGBA)> callback = nullptr)
+    {
+        return DynamicColorPicker(title, initialColor, enableAlpha, hParent, std::move(callback));
     }
 }
 

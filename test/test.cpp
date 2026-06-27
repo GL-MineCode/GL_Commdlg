@@ -6,8 +6,6 @@
 // #define COLOR_PICKER_IMPLEMENTATION
 // #include "new_test.hpp"
 
-using namespace GLDLG;
-
 // ============================================================
 // GL_Commdlg.hpp - Complete Functionality Test
 // This test demonstrates all public APIs provided by the library.
@@ -19,7 +17,7 @@ static void testMessageBox()
     std::cout << "=== Test: messageBox (style 0 - GDI drawn) ===\n";
     std::cout << "A message box with word-wrapped text should appear. "
                  "The dialog auto-resizes to fit the content.\n";
-    int result = messageBox(
+    int result = GLDLG::messageBox(
         "messageBox Test(Style 0)",
         "This is like the traditional MessageBox function.\r\n" "However, you can completely customize the buttons in the dialog box.\r\n"
         "And these is no limitations in the number of the buttons!\r\n"
@@ -39,7 +37,7 @@ static void testMessageBoxRich()
 {
     std::cout << "=== Test: messageBox (style 1 - rich/edit) ===\n";
     std::cout << "A rich message box with [Yes] [No] [Maybe] buttons should appear.\n";
-    int result = messageBox(
+    int result = GLDLG::messageBox(
         "messageBox Test(Style 1)",
         "This is a rich message box.\nIt supports multi-line text with word wrapping.\n\nYou can display longer messages here,such as debugging infomations and clauses,etc.",
         {{10, "Yes"}, {20, "No"}, {30, "Maybe"}},
@@ -54,7 +52,7 @@ static void testPromptDialog()
     std::cout << "=== Test: promptDialog ===\n";
     std::cout << "A input dialog should appear. Enter some text and click OK.\n";
     std::string output;
-    bool confirmed = promptDialog(
+    bool confirmed = GLDLG::promptDialog(
         "Input Test",
         "Please enter your name below:",
         output,
@@ -73,7 +71,7 @@ static void testGetOpenFileName()
     std::cout << "=== Test: getOpenFileName ===\n";
     std::cout << "An Open File dialog should appear. Select a file and click Open.\n";
     try {
-        std::string path = getOpenFileName(
+        std::string path = GLDLG::getOpenFileName(
             {"Text Files (*.txt)|*.txt", "All Files (*.*)|*.*"},
             "Select a text file",
             "",
@@ -96,7 +94,7 @@ static void testGetSaveFileName()
     std::cout << "=== Test: getSaveFileName ===\n";
     std::cout << "A Save File dialog should appear. Choose a path and click Save.\n";
     try {
-        std::string path = getSaveFileName(
+        std::string path = GLDLG::getSaveFileName(
             {"Text Files (*.txt)|*.txt", "All Files (*.*)|*.*"},
             "Save as...",
             "",
@@ -120,7 +118,7 @@ static void testGetOpenMultipleFileNames()
     std::cout << "A multi-select file dialog should appear. "
                  "Select multiple files and click Open.\n";
     try {
-        auto files = getOpenMultipleFileNames(
+        auto files = GLDLG::getOpenMultipleFileNames(
             {"All Files (*.*)|*.*"},
             "Select multiple files"
         );
@@ -143,7 +141,7 @@ static void testGetOpenDirectoryName()
     std::cout << "=== Test: getOpenDirectoryName ===\n";
     std::cout << "A folder browser dialog should appear. Select a folder.\n";
     try {
-        std::string dir = getOpenDirectoryName(
+        std::string dir = GLDLG::getOpenDirectoryName(
             "Please select a folder:",
             ""
         );
@@ -164,7 +162,7 @@ static void testGetOpenDirectoryNames()
     std::cout << "A multi-select folder dialog should appear. "
                  "Select multiple folders and click Open.\n";
     try {
-        auto dirs = getOpenDirectoryNames(
+        auto dirs = GLDLG::getOpenDirectoryNames(
             "Select one or more folders:",
             ""
         );
@@ -184,18 +182,77 @@ static void testGetOpenDirectoryNames()
 
 static void testChooseColor()
 {
-    std::cout << "=== Test: chooseColor ===\n";
-    std::cout << "A color picker dialog should appear. Pick a color.\n";
-    //占位
+    std::cout << "=== Test: CreateDynamicColorPicker ===\n";
+    std::cout << "A non-blocking color picker dialog should appear. "
+                 "Pick a color and close the dialog.\n";
+
+    auto picker = GLDLG::CreateDynamicColorPicker(
+        "Pick a Color",
+        {255, 0, 0},
+        false
+    );
+
+    picker.SetCallback([](GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType type,GLDLG::ColorRGBA color)->GLDLG::ColorRGBA{
+        if(type == GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType::Dragging){
+            std::cout << "Color is changing: ("
+                << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
+        }
+        else if(type == GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType::Released){
+            std::cout << "Color is determined: ("
+                << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
+        }
+        return color;
+    });
+
+    std::cout << "Color picker is running. Close the window when done.\n";
+
+    while (!picker.IsFinished()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    GLDLG::ColorRGBA color = picker.GetColor();
+    std::cout << "Color picker closed. Final color: ("
+              << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
     std::cout << "\n";
 }
 
 static void testChooseColorAlpha()
 {
-    std::cout << "=== Test: chooseColorEx (with alpha) ===\n";
-    std::cout << "A color picker with alpha channel should appear. "
-                 "The right panel includes an Alpha slider.\n";
-    //占位
+    std::cout << "=== Test: CreateDynamicColorPicker (with alpha) ===\n";
+    std::cout << "A color picker with semi-transparent initial color should appear.\n";
+
+    auto picker = GLDLG::CreateDynamicColorPicker(
+        "Pick a Color (Alpha)",
+        {0, 128, 255, 128}
+    );
+
+    picker.SetCallback([](GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType type,GLDLG::ColorRGBA color)->GLDLG::ColorRGBA{
+        if(type == GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType::Dragging){
+            std::cout << "Color is changing: ("
+                << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
+        }
+        else if(type == GLDLG::DynamicColorPicker::DynamicColorCallbackMessageType::Released){
+            std::cout << "Color is determined: ("
+                << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
+        }
+        return color;
+    });
+
+    std::cout << "Color picker is running. Close the window when done.\n";
+
+    while (!picker.IsFinished()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    GLDLG::ColorRGBA color = picker.GetColor();
+    std::cout << "Color picker closed. Final color: ("
+              << (int)color.r << ", " << (int)color.g << ", "
+              << (int)color.b << ", " << (int)color.a << ")\n";
     std::cout << "\n";
 }
 
@@ -204,8 +261,8 @@ static void testChooseFont()
     std::cout << "=== Test: chooseFont ===\n";
     std::cout << "A font selection dialog should appear. Pick a font.\n";
     try {
-        chooseFontInfo cfi;
-        chooseFont(cfi);
+        GLDLG::chooseFontInfo cfi;
+        GLDLG::chooseFont(cfi);
         std::cout << "Selected font:\n";
         std::cout << "  Name: " << cfi.fontFaceName << "\n";
         std::cout << "  Size: " << cfi.fontPointSize << "pt\n";
@@ -222,7 +279,7 @@ static void testDynamicProgressBar()
     std::cout << "A non-blocking progress bar dialog should appear. "
                  "Watch it progress from 0 to 100.\n";
 
-    auto bar = CreateDynamicProgressBar(
+    auto bar = GLDLG::CreateDynamicProgressBar(
         "Progress Test",
         "Downloading files...",
         NULL
@@ -251,15 +308,19 @@ static void testDynamicSlider()
     std::cout << "A non-blocking slider dialog should appear. "
                  "Try dragging the slider.\n";
 
-    auto slider = CreateDynamicSlider(
+    auto slider = GLDLG::CreateDynamicSlider(
         "Slider Test",
         "Drag the slider to adjust value:",
         0,     // min
         100,   // max
         50,    // initial value
-        [](DynamicSliderCallbackMessageType type, int value) -> int {
-            if (type == DynamicSliderCallbackMessageType::Dragging) {
-                // You could modify or clamp the value here
+        [](GLDLG::DynamicSliderCallbackMessageType type, int value) -> int {
+            // You could modify or clamp the value here
+            if (type == GLDLG::DynamicSliderCallbackMessageType::Dragging) {
+                std::cout << "Slider is being dragged: " << value << "\n";
+            }
+            else if(type == GLDLG::DynamicSliderCallbackMessageType::Released){
+                std::cout << "Slider is released: " << value << "\n";
             }
             return value;
         },
@@ -294,7 +355,7 @@ int main()
     std::cout << "then check the console output for results.\n";
     std::cout << "Press Ctrl+C at any time to abort.\n\n";
 
-    int test = messageBox("Select a test","Select a test",{
+    int test = GLDLG::messageBox("Select a test","Select a test",{
         {1,"All"},
         {100,"All Native"},
         {101,"All Extended"},
@@ -309,8 +370,10 @@ int main()
         {10,"Choose Color"},
         {11,"Choose Color(Alpha)"},
         {12,"Choose Font"},
-        {12,"Progress Bar"},
+        {13,"Progress Bar"},
         {14,"Slider"},
+        {15,"Color Picker"},
+        {16,"Color Picker (Alpha)"},
     });
 
     // --- Blocking Dialogs (sequential, user must interact) ---
@@ -330,6 +393,8 @@ int main()
     // --- Dynamic (non-blocking) Dialogs ---
     if(test == 1 || test == 13 || test == 101) testDynamicProgressBar();
     if(test == 1 || test == 14 || test == 101) testDynamicSlider();
+    if(test == 1 || test == 15 || test == 101) testChooseColor();
+    if(test == 1 || test == 16 || test == 101) testChooseColorAlpha();
 
     std::cout << "============================================\n";
     std::cout << "  All tests completed!\n";
