@@ -3267,6 +3267,26 @@ namespace GLDLG
                         PostMessageW(pData->hwnd, WM_USER + 100, 0, 0);
                     return 0;
                 }
+                if (wp == VK_RETURN)
+                {
+                    // Enter picks the color at current cursor position
+                    POINT pt;
+                    GetCursorPos(&pt);
+                    HDC hdcScreen = GetDC(nullptr);
+                    COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                    ReleaseDC(nullptr, hdcScreen);
+                    int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
+                    pData->curR.store(r);
+                    pData->curG.store(g);
+                    pData->curB.store(b);
+                    auto hsl = RgbToHsl(r, g, b);
+                    pData->hue.store(hsl.h);
+                    pData->sat.store(hsl.s);
+                    pData->light.store(hsl.l);
+                    if (pData->hwnd && IsWindow(pData->hwnd))
+                        PostMessageW(pData->hwnd, WM_USER + 100, 1, 0);
+                    return 0;
+                }
                 // Arrow keys: nudge cursor by 1px (only on initial press, not repeat)
                 if (!(lp & 0x40000000))
                 {
@@ -3527,7 +3547,7 @@ namespace GLDLG
                 RECT guideRect1 = {6, 38, rc.right - 6, 52};
                 DrawTextW(memDC, L"Arrow:Nudge Ctrl+Wheel:Zoom", -1, &guideRect1, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
                 RECT guideRect2 = {6, 52, rc.right - 6, 66};
-                DrawTextW(memDC, L"LMB:Pick Esc/RMB:Exit", -1, &guideRect2, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(memDC, L"LMB/Enter:Pick Esc/RMB:Exit", -1, &guideRect2, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(memDC, oldGuideFont);
                 DeleteObject(hGuideFont);
 
