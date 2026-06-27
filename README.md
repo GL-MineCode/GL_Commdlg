@@ -10,14 +10,16 @@ A C++ header-only library that wraps Windows Common Dialogs and Shell dialogs, p
 ## Features
 
 - **Single header** — Just `#include "GL_Commdlg.hpp"`, no extra dependencies
-- **UTF-8 API** — All string parameters and return values use UTF-8; conversion to/from wide strings is handled internally
+- **UTF-8 API** — All string parameters and return values use UTF-8, no more ANSI/wide encoding headaches!
 - **File dialogs** — Open, save, and multi-select file dialogs with custom filters
-- **Directory picker** — Folder browser dialog wrapping `SHBrowseForFolderW`
-- **Color picker** — Color selection dialog wrapping `ChooseColorW`
+- **Directory picker** — Directory selection dialog, automatically picks the best API version for the current system
 - **Font picker** — Font selection dialog wrapping `ChooseFontW`, with automatic font file path lookup via the registry
-- **Prompt dialog** — Custom text input dialog (not available in standard `commdlg`)
+- **Prompt dialog** — Custom text input dialog
 - **Custom message box** — Message box with user-defined buttons and two display styles
 - **Non-blocking dynamic dialogs** — Progress bar and slider that run in a separate thread, controllable from the calling thread
+    - **Slider dialog** — Non-blocking slider dialog for selecting a numeric value
+    - **Progress dialog** — Non-blocking progress bar dialog for monitoring task progress
+    - **Color picker** - A non-blocking color picker dialog box that is more powerful than the blocking dialog box provided by Win32 API! It supports HSL/HEX color input, screen color picking, alpha value support, just like QT's color picker! (currently under development)
 
 ## Quick Start
 
@@ -52,7 +54,7 @@ This is a header-only library — just include the header:
 
 ```bash
 # MinGW-w64 (requires extra linker flags)
-g++ -std=c++20 -Iinclude your_program.cpp -o your_program -lcomdlg32 -lshell32 -lgdi32 -lole32
+g++ -std=c++20 -Iinclude your_program.cpp -o your_program -lcomdlg32 -lshell32 -lgdi32 -lole32 -luuid -ldwmapi
 
 # MSVC (auto-links via #pragma comment)
 cl /std:c++20 /Iinclude your_program.cpp
@@ -93,18 +95,6 @@ All functions accept optional parameters: `title`, `initialDir`, `defaultFileNam
 | Open File | ![](demo/select_file.png) |
 | Save File | ![](demo/save_file.png) |
 | Browse Folder | ![](demo/select_directory.png) |
-
-### Color Picker
-
-```cpp
-SDL_Color color = {255, 0, 0, 255};  // initial red
-chooseColor(color);
-// color now holds the user's selection
-```
-
-The library defines a fallback `SDL_Color` only if the SDL header is not already included.
-
-![](demo/pick_color.png)
 
 ### Font Picker
 
@@ -211,6 +201,34 @@ The callback receives a `DynamicSliderCallbackMessageType` (`Dragging` or `Relea
 
 ![](demo/slider.png)
 
+## Theme Customization
+
+The entire extended UI uses a unified dark color scheme defined by the `GLDLG::Theme` struct. You can query or override it at runtime:
+
+```cpp
+// Get current theme
+const auto &t = GLDLG::GetTheme();
+
+// Set custom theme (ColorRGBA values)
+GLDLG::SetTheme({
+    {230, 230, 239},   // Text           — #E6E6EF
+    {56,  56,  66},    // ControlFrame   — #383842
+    {26,  26,  30},    // PrimaryBackground  — #1A1A1E
+    {39,  39,  46},    // SecondaryBackground — #27272E
+    {66,  73,  73},    // PrimaryForeground   — #424949
+    {72,  84,  102}    // SecondaryForeground — #485466
+});
+```
+
+| Token | Default | Used For |
+|-------|---------|----------|
+| `Text` | `#E6E6EF` | Labels, control text |
+| `ControlFrame` | `#383842` | Borders of all controls |
+| `PrimaryBackground` | `#1A1A1E` | Dialog window background |
+| `SecondaryBackground` | `#27272E` | Control interior |
+| `PrimaryForeground` | `#424949` | Button hover state |
+| `SecondaryForeground` | `#485466` | Disabled state |
+
 ## Project Structure
 
 ```
@@ -227,15 +245,23 @@ GL_Commdlg/
 │   ├── progress_bar.png
 │   └── slider.png
 ├── include/
-│   ├── GL_Commdlg.hpp      # Main header — the whole library
-│   └── UTF8toWide.hpp       # UTF-8 / wide string conversion helpers
+│   ├── GL_Commdlg.hpp            # Main header — the whole library
+│   ├── GL_Commdlg_Native.hpp     # Native Win32 common dialog wrappers
+│   ├── GL_Commdlg_Extended.hpp   # Extended custom dialogs & controls
+│   └── UTF8toWide.hpp            # UTF-8 / wide string conversion helpers
 ├── test/
 │   └── test.cpp             # Test program (exercises all APIs)
 ├── Makefile                 # Build script (MinGW-w64)
+├── CONTROLS.md              # Internal controls reference (EN)
+├── CONTROLS_cn.md           # Internal controls reference (CN)
 ├── LICENSE                  # License file
 ├── README.md                # English documentation
 └── README_cn.md             # Chinese documentation
 ```
+
+## Reuse Controls
+
+If you'd like to use the internal controls (`Button`, `Edit`, `Tooltip`) in your own projects, see [`CONTROLS.md`](CONTROLS.md) for the full documentation.
 
 ## License
 

@@ -10,14 +10,16 @@
 ## 特性
 
 - **单头文件** — 只需 `#include "GL_Commdlg.hpp"`，无额外依赖
-- **UTF-8 API** — 所有字符串参数和返回值均使用 UTF-8 编码；与宽字符串的转换在内部自动完成
+- **UTF-8 API** — 所有字符串参数和返回值均使用 UTF-8 编码，不用再为Win32 API的编码问题烦恼！
 - **文件对话框** — 打开、保存、多选文件对话框，支持自定义过滤器
-- **目录选择器** — 封装 `SHBrowseForFolderW` 的目录浏览对话框
-- **颜色选择器** — 封装 `ChooseColorW` 的颜色选择对话框
+- **目录选择器** — 目录选择对话框，自动采用合适系统版本的API
 - **字体选择器** — 封装 `ChooseFontW` 的字体选择对话框，自动通过注册表查找字体文件路径
-- **输入对话框** — 自定义文本输入对话框（标准 `commdlg` 未提供）
+- **输入对话框** — 自定义文本输入的对话框
 - **自定义消息框** — 支持用户自定义按钮和两种显示样式的消息框
 - **非阻塞动态对话框** — 进度条和滑动条在独立线程中运行，可从调用线程实时控制
+    - **滑条对话框** — 非阻塞的滑条对话框，允许用户通过一个带有滑条的对话框来选择数值
+    - **进度对话框** — 非阻塞的进度对话框，允许用户通过一个带有进度条的对话框来查看某项任务进行的进度
+    - **颜色选择器** — 非阻塞的颜色选择对话框，比Windows自带的阻塞式对话框更强！支持HSL/HEX颜色输入、屏幕取色、Alpha值等功能，比肩QT的颜色选择对话框（正在开发中，敬请期待）
 
 ## 快速开始
 
@@ -52,7 +54,7 @@ int main() {
 
 ```bash
 # MinGW-w64（需要额外链接库）
-g++ -std=c++20 -Iinclude your_program.cpp -o your_program -lcomdlg32 -lshell32 -lgdi32 -lole32
+g++ -std=c++20 -Iinclude your_program.cpp -o your_program -lcomdlg32 -lshell32 -lgdi32 -lole32 -luuid -ldwmapi
 
 # MSVC（通过 #pragma comment 自动链接）
 cl /std:c++20 /Iinclude your_program.cpp
@@ -93,18 +95,6 @@ auto file = getOpenFileName({
 | 打开文件 | ![](demo/select_file.png) |
 | 保存文件 | ![](demo/save_file.png) |
 | 浏览文件夹 | ![](demo/select_directory.png) |
-
-### 颜色选择器
-
-```cpp
-SDL_Color color = {255, 0, 0, 255};  // 初始红色
-chooseColor(color);
-// color 现在保存了用户选择的颜色
-```
-
-如果尚未包含 SDL 头文件，库会提供一个回退的 `SDL_Color` 定义。
-
-![](demo/pick_color.png)
 
 ### 字体选择器
 
@@ -211,6 +201,34 @@ slider.GetSliderInfo(cur, min, max, msg);
 
 ![](demo/slider.png)
 
+## 主题定制
+
+扩展对话框的UI全部使用 `GLDLG::Theme` 定义的统一暗色配色方案
+
+```cpp
+// 获取当前主题
+const auto &t = GLDLG::GetTheme();
+
+// 设置自定义主题（ColorRGBA 值）
+GLDLG::SetTheme({
+    {230, 230, 239},   // Text           — #E6E6EF
+    {56,  56,  66},    // ControlFrame   — #383842
+    {26,  26,  30},    // PrimaryBackground  — #1A1A1E
+    {39,  39,  46},    // SecondaryBackground — #27272E
+    {66,  73,  73},    // PrimaryForeground   — #424949
+    {72,  84,  102}    // SecondaryForeground — #485466
+});
+```
+
+| 颜色 | 默认值 | 用途 |
+|------|--------|------|
+| `Text` | `#E6E6EF` | 标签、控件文字 |
+| `ControlFrame` | `#383842` | 所有控件的边框 |
+| `PrimaryBackground` | `#1A1A1E` | 对话框背景 |
+| `SecondaryBackground` | `#27272E` | 控件内部背景 |
+| `PrimaryForeground` | `#424949` | 按钮悬停状态 |
+| `SecondaryForeground` | `#485466` | 禁用状态 |
+
 ## 项目结构
 
 ```
@@ -227,15 +245,23 @@ GL_Commdlg/
 │   ├── progress_bar.png
 │   └── slider.png
 ├── include/
-│   ├── GL_Commdlg.hpp      # 主头文件 — 整个库
-│   └── UTF8toWide.hpp       # UTF-8 / 宽字符串转换辅助函数
+│   ├── GL_Commdlg.hpp            # 主头文件 — 整个库
+│   ├── GL_Commdlg_Native.hpp     # 原生 Win32 通用对话框封装
+│   ├── GL_Commdlg_Extended.hpp   # 扩展自定义对话框与控件
+│   └── UTF8toWide.hpp            # UTF-8 / 宽字符串转换辅助函数
 ├── test/
 │   └── test.cpp             # 测试程序（覆盖所有 API）
 ├── Makefile                 # 构建脚本（MinGW-w64）
+├── CONTROLS.md              # 内部控件参考文档（EN）
+├── CONTROLS_cn.md           # 内部控件参考文档（CN）
 ├── LICENSE                  # 许可证文件
 ├── README.md                # 英文文档
 └── README_cn.md             # 中文文档
 ```
+
+## 复用控件
+
+若想复用我们内部使用的控件（`Button`、`Edit`、`Tooltip`），详细文档见 [`CONTROLS.md`](CONTROLS.md)。
 
 ## 许可证
 
