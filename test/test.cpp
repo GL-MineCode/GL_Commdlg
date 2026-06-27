@@ -3,6 +3,10 @@
 #include <thread>
 #include <chrono>
 #include "GL_Commdlg.hpp"
+// #define COLOR_PICKER_IMPLEMENTATION
+// #include "new_test.hpp"
+
+using namespace GLDLG;
 
 // ============================================================
 // GL_Commdlg.hpp - Complete Functionality Test
@@ -154,20 +158,44 @@ static void testGetOpenDirectoryName()
     std::cout << "\n";
 }
 
+static void testGetOpenDirectoryNames()
+{
+    std::cout << "=== Test: getOpenDirectoryNames ===\n";
+    std::cout << "A multi-select folder dialog should appear. "
+                 "Select multiple folders and click Open.\n";
+    try {
+        auto dirs = getOpenDirectoryNames(
+            "Select one or more folders:",
+            ""
+        );
+        if (dirs.empty()) {
+            std::cout << "User cancelled.\n";
+        } else {
+            std::cout << "Selected " << dirs.size() << " director(ies):\n";
+            for (size_t i = 0; i < dirs.size(); ++i) {
+                std::cout << "  [" << i << "] " << dirs[i] << "\n";
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+    std::cout << "\n";
+}
+
 static void testChooseColor()
 {
     std::cout << "=== Test: chooseColor ===\n";
     std::cout << "A color picker dialog should appear. Pick a color.\n";
-    try {
-        SDL_Color color = {255, 0, 0, 255};  // initial red
-        chooseColor(color);
-        std::cout << "Selected color: R=" << (int)color.r
-                  << " G=" << (int)color.g
-                  << " B=" << (int)color.b
-                  << " A=" << (int)color.a << "\n";
-    } catch (const std::exception& e) {
-        std::cout << "Error: " << e.what() << "\n";
-    }
+    //占位
+    std::cout << "\n";
+}
+
+static void testChooseColorAlpha()
+{
+    std::cout << "=== Test: chooseColorEx (with alpha) ===\n";
+    std::cout << "A color picker with alpha channel should appear. "
+                 "The right panel includes an Alpha slider.\n";
+    //占位
     std::cout << "\n";
 }
 
@@ -258,24 +286,50 @@ static void testDynamicSlider()
 // ============================================================
 int main()
 {
+
+    // RGBAColor c;
+    // chooseColorEx(c,true);
+
     std::cout << "Each test will open a dialog. Interact with it,\n";
     std::cout << "then check the console output for results.\n";
     std::cout << "Press Ctrl+C at any time to abort.\n\n";
 
+    int test = messageBox("Select a test","Select a test",{
+        {1,"All"},
+        {100,"All Native"},
+        {101,"All Extended"},
+        {2,"Normal Messagebox"},
+        {3,"Rich Messagebox"},
+        {4,"Prompt"},
+        {5,"Open File"},
+        {6,"Save File"},
+        {7,"Open Files"},
+        {8,"Open Directory"},
+        {9,"Open Directories"},
+        {10,"Choose Color"},
+        {11,"Choose Color(Alpha)"},
+        {12,"Choose Font"},
+        {12,"Progress Bar"},
+        {14,"Slider"},
+    });
+
     // --- Blocking Dialogs (sequential, user must interact) ---
-    testMessageBox();
-    testMessageBoxRich();
-    testPromptDialog();
-    testGetOpenFileName();
-    testGetSaveFileName();
-    testGetOpenMultipleFileNames();
-    testGetOpenDirectoryName();
-    testChooseColor();
-    testChooseFont();
+    if(test == 1 || test == 2 || test == 101) testMessageBox();
+    if(test == 1 || test == 3 || test == 101) testMessageBoxRich();
+    if(test == 1 || test == 4 || test == 101) testPromptDialog();
+    if(test == 1 || test == 5 || test == 100) testGetOpenFileName();
+    if(test == 1 || test == 6 || test == 100) testGetSaveFileName();
+    if(test == 1 || test == 7 || test == 100) testGetOpenMultipleFileNames();
+    if(test == 1 || test == 8 || test == 100) testGetOpenDirectoryName();
+    if(test == 1 || test == 9 || test == 100) testGetOpenDirectoryNames();
+    
+    if(test == 1 || test == 10 || test == 101) testChooseColor();
+    if(test == 1 || test == 11 || test == 101) testChooseColorAlpha();
+    if(test == 1 || test == 12 || test == 100) testChooseFont();
 
     // --- Dynamic (non-blocking) Dialogs ---
-    testDynamicProgressBar();
-    testDynamicSlider();
+    if(test == 1 || test == 13 || test == 101) testDynamicProgressBar();
+    if(test == 1 || test == 14 || test == 101) testDynamicSlider();
 
     std::cout << "============================================\n";
     std::cout << "  All tests completed!\n";
