@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v2.0 Release - 2026/6/28]
+
 ### Added
 - **`Controls::Edit`** — EDIT control customization with dark theme matching `Controls::Button`:
   - Custom `WinProc` with `WM_ERASEBKGND` (dark background), `WM_PAINT` (flat border), `WM_NCPAINT` passthrough
