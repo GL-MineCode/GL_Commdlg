@@ -372,8 +372,6 @@ int main()
         {12,"Choose Font"},
         {13,"Progress Bar"},
         {14,"Slider"},
-        {15,"Color Picker"},
-        {16,"Color Picker (Alpha)"},
     });
 
     // --- Blocking Dialogs (sequential, user must interact) ---
@@ -386,15 +384,13 @@ int main()
     if(test == 1 || test == 8 || test == 100) testGetOpenDirectoryName();
     if(test == 1 || test == 9 || test == 100) testGetOpenDirectoryNames();
     
-    if(test == 1 || test == 10 || test == 101) testChooseColor();
-    if(test == 1 || test == 11 || test == 101) testChooseColorAlpha();
     if(test == 1 || test == 12 || test == 100) testChooseFont();
 
     // --- Dynamic (non-blocking) Dialogs ---
     if(test == 1 || test == 13 || test == 101) testDynamicProgressBar();
     if(test == 1 || test == 14 || test == 101) testDynamicSlider();
-    if(test == 1 || test == 15 || test == 101) testChooseColor();
-    if(test == 1 || test == 16 || test == 101) testChooseColorAlpha();
+    if(test == 1 || test == 10 || test == 101) testChooseColor();
+    if(test == 1 || test == 11 || test == 101) testChooseColorAlpha();
 
     std::cout << "============================================\n";
     std::cout << "  All tests completed!\n";
