@@ -1,6 +1,6 @@
 Select a language | 选择语言
 
-[**简体中文**](README_cn.md)  
+[**简体中文**](README_CN.md)  
 [**English**](README.md)  
 
 # GL_Commdlg
