@@ -3115,6 +3115,22 @@ namespace GLDLG
             return r;
         }
 
+        // ── Get DPI scale factor for primary monitor ──
+        // Converts from virtual (non-DPI-aware) coordinates to physical pixels
+        static float GetDpiScale()
+        {
+            DEVMODEW dm = {};
+            dm.dmSize = sizeof(dm);
+            if (EnumDisplaySettingsW(nullptr, ENUM_CURRENT_SETTINGS, &dm))
+            {
+                int physicalW = static_cast<int>(dm.dmPelsWidth);
+                int virtualW = GetSystemMetrics(SM_CXSCREEN);
+                if (virtualW > 0 && physicalW != virtualW)
+                    return static_cast<float>(physicalW) / static_cast<float>(virtualW);
+            }
+            return 1.0f;
+        }
+
         // ── Update magnifier content & position ──
         static void UpdateMagnifier(DialogData *pData)
         {
@@ -3169,10 +3185,13 @@ namespace GLDLG
 
             case WM_MOUSEMOVE:
             {
+                float dpiScale = GetDpiScale();
                 POINT pt;
                 GetCursorPos(&pt);
                 HDC hdcScreen = GetDC(nullptr);
-                COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                COLORREF col = GetPixel(hdcScreen,
+                    static_cast<int>(pt.x * dpiScale),
+                    static_cast<int>(pt.y * dpiScale));
                 ReleaseDC(nullptr, hdcScreen);
                 int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
                 pData->eyePreviewR = r;
@@ -3232,10 +3251,13 @@ namespace GLDLG
 
             case WM_LBUTTONDOWN:
             {
+                float dpiScale = GetDpiScale();
                 POINT pt;
                 GetCursorPos(&pt);
                 HDC hdcScreen = GetDC(nullptr);
-                COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                COLORREF col = GetPixel(hdcScreen,
+                    static_cast<int>(pt.x * dpiScale),
+                    static_cast<int>(pt.y * dpiScale));
                 ReleaseDC(nullptr, hdcScreen);
                 int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
 
@@ -3270,10 +3292,13 @@ namespace GLDLG
                 if (wp == VK_RETURN)
                 {
                     // Enter picks the color at current cursor position
+                    float dpiScale = GetDpiScale();
                     POINT pt;
                     GetCursorPos(&pt);
                     HDC hdcScreen = GetDC(nullptr);
-                    COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                    COLORREF col = GetPixel(hdcScreen,
+                        static_cast<int>(pt.x * dpiScale),
+                        static_cast<int>(pt.y * dpiScale));
                     ReleaseDC(nullptr, hdcScreen);
                     int r = GetRValue(col), g = GetGValue(col), b = GetBValue(col);
                     pData->curR.store(r);
@@ -3339,9 +3364,11 @@ namespace GLDLG
                 if (srcW < 1) srcW = 1;
                 if (srcH < 1) srcH = 1;
 
+                float dpiScale = GetDpiScale();
                 POINT pt;
                 GetCursorPos(&pt);
-                int srcX = pt.x - srcW / 2, srcY = pt.y - srcH / 2;
+                int srcX = static_cast<int>(pt.x * dpiScale) - srcW / 2;
+                int srcY = static_cast<int>(pt.y * dpiScale) - srcH / 2;
 
                 // ── Create source DIBSection ──
                 BITMAPINFO bmiS = {};
@@ -3700,7 +3727,7 @@ namespace GLDLG
 
                 // Eyedropper (screen color picker) button
                 pData->hBtnEye = CreateWindowExW(0, L"BUTTON", L"Pick", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
-                                                 btnRightX - btnW * 3 - 16, btnYC, btnW, btnH, hwnd, (HMENU)3020, hInst, nullptr);
+                                                 clCreate.left + PAD, btnYC, btnW, btnH, hwnd, (HMENU)3020, hInst, nullptr);
                 Controls::Button::Subclass(pData->hBtnEye);
 
                 if (pData->hFont)
@@ -3740,7 +3767,7 @@ namespace GLDLG
                 int btnRightX = cl5.right - PAD;
                 if (pData->hBtnOK)
                 {
-                    SetWindowPos(pData->hBtnEye, nullptr, btnRightX - btnW * 3 - 16, btnYC, btnW, btnH, SWP_NOZORDER);
+                    SetWindowPos(pData->hBtnEye, nullptr, cl5.left + PAD, btnYC, btnW, btnH, SWP_NOZORDER);
                     SetWindowPos(pData->hBtnCancel, nullptr, btnRightX - btnW, btnYC, btnW, btnH, SWP_NOZORDER);
                     SetWindowPos(pData->hBtnOK, nullptr, btnRightX - btnW * 2 - 8, btnYC, btnW, btnH, SWP_NOZORDER);
                 }
@@ -4277,8 +4304,9 @@ namespace GLDLG
                     if (!pData->eyeDropperMode.load())
                     {
                         auto hInst = GetModuleHandleW(nullptr);
-                        int scrW = GetSystemMetrics(SM_CXSCREEN);
-                        int scrH = GetSystemMetrics(SM_CYSCREEN);
+                        float dpiScale = GetDpiScale();
+                        int scrW = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * dpiScale);
+                        int scrH = static_cast<int>(GetSystemMetrics(SM_CYSCREEN) * dpiScale);
 
                         // Create full-screen overlay
                         pData->hOverlay = CreateWindowExW(
@@ -4312,7 +4340,9 @@ namespace GLDLG
                             POINT pt;
                             GetCursorPos(&pt);
                             HDC hdcScreen = GetDC(nullptr);
-                            COLORREF col = GetPixel(hdcScreen, pt.x, pt.y);
+                            COLORREF col = GetPixel(hdcScreen,
+                                static_cast<int>(pt.x * dpiScale),
+                                static_cast<int>(pt.y * dpiScale));
                             ReleaseDC(nullptr, hdcScreen);
                             pData->eyePreviewR = GetRValue(col);
                             pData->eyePreviewG = GetGValue(col);
