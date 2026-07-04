@@ -66,6 +66,27 @@ static void testPromptDialog()
     std::cout << "\n";
 }
 
+static void testMultilinePromptDialog()
+{
+    std::cout << "=== Test: promptDialog (Multiline) ===\n";
+    std::cout << "A multiline input dialog should appear. Enter some text and click OK.\n";
+    std::string output;
+    bool confirmed = GLDLG::promptDialog(
+        "Input Test",
+        "Please enter multiline text:",
+        output,
+        "Default Text\nLine 2\nLine 3",
+        NULL,
+        true // Enable multiline mode
+    );
+    if (confirmed) {
+        std::cout << "Confirmed. Input: \"" << output << "\"\n";
+    } else {
+        std::cout << "Cancelled.\n";
+    }
+    std::cout << "\n";
+}
+
 static void testGetOpenFileName()
 {
     std::cout << "=== Test: getOpenFileName ===\n";
@@ -362,6 +383,7 @@ int main()
         {2,"Normal Messagebox"},
         {3,"Rich Messagebox"},
         {4,"Prompt"},
+        {44,"Prompt(Multiline)"},
         {5,"Open File"},
         {6,"Save File"},
         {7,"Open Files"},
@@ -378,6 +400,7 @@ int main()
     if(test == 1 || test == 2 || test == 101) testMessageBox();
     if(test == 1 || test == 3 || test == 101) testMessageBoxRich();
     if(test == 1 || test == 4 || test == 101) testPromptDialog();
+    if(test == 1 || test == 44 || test == 101) testMultilinePromptDialog();
     if(test == 1 || test == 5 || test == 100) testGetOpenFileName();
     if(test == 1 || test == 6 || test == 100) testGetSaveFileName();
     if(test == 1 || test == 7 || test == 100) testGetOpenMultipleFileNames();

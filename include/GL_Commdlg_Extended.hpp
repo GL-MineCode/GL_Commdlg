@@ -350,11 +350,13 @@ namespace GLDLG
                 {
                     pData->state = CtrlState::Normal;
                     InvalidateRect(hWnd, nullptr, TRUE);
+                    SetWindowPos(hWnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
                     break;
                 }
                 case WM_KILLFOCUS:
                 {
                     InvalidateRect(hWnd, nullptr, TRUE);
+                    SetWindowPos(hWnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
                     break;
                 }
                 case WM_ENABLE:
@@ -371,28 +373,42 @@ namespace GLDLG
                     DeleteObject(hBrush);
                     return 1;
                 }
+                case WM_NCCALCSIZE:
+                {
+                    if (wParam)
+                    {
+                        NCCALCSIZE_PARAMS *pncsp = reinterpret_cast<NCCALCSIZE_PARAMS *>(lParam);
+                        InflateRect(&pncsp->rgrc[0], -1, -1);
+                        return 0;
+                    }
+                    else
+                    {
+                        RECT *prc = reinterpret_cast<RECT *>(lParam);
+                        InflateRect(prc, -1, -1);
+                        return 0;
+                    }
+                }
                 case WM_NCPAINT:
                 {
-                    // 边框改由 WM_PAINT 中绘制，避免被默认 EDIT 绘制覆盖
-                    return CallWindowProc(pData->origProc, hWnd, msg, wParam, lParam);
-                }
-                case WM_PAINT:
-                {
-                    // 先让默认 EDIT 控件绘制文本/光标/选区
                     CallWindowProc(pData->origProc, hWnd, msg, wParam, lParam);
 
-                    // 再在其上方绘制无圆角边框（不填充内部，避免覆盖文本）
-                    HDC hdc = GetDC(hWnd);
-                    RECT rc;
-                    GetClientRect(hWnd, &rc);
-                    HPEN hPen = CreatePen(PS_INSIDEFRAME, 1, theme.ControlFrame.ToCOLORREF());
-                    HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-                    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(HOLLOW_BRUSH));
-                    Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
-                    SelectObject(hdc, hOldPen);
-                    SelectObject(hdc, hOldBrush);
-                    DeleteObject(hPen);
-                    ReleaseDC(hWnd, hdc);
+                    HDC hdc = GetWindowDC(hWnd);
+                    if (hdc)
+                    {
+                        RECT rc;
+                        GetWindowRect(hWnd, &rc);
+                        OffsetRect(&rc, -rc.left, -rc.top);
+
+                        HPEN hPen = CreatePen(PS_SOLID, 1, theme.ControlFrame.ToCOLORREF());
+                        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+                        HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+                        Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
+                        SelectObject(hdc, hOldPen);
+                        SelectObject(hdc, hOldBrush);
+                        DeleteObject(hPen);
+
+                        ReleaseDC(hWnd, hdc);
+                    }
                     return 0;
                 }
                 case WM_SIZE:
@@ -649,6 +665,7 @@ namespace GLDLG
         std::wstring g_defalutContent;
         std::wstring g_message;
         bool g_did_confirm;
+        bool g_multiline_mode = false;
 
         LRESULT CALLBACK PromptDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         {
@@ -684,12 +701,20 @@ namespace GLDLG
                     ((LPCREATESTRUCTW)lParam)->hInstance,
                     NULL);
 
+                DWORD editStyle = WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL;
+                int editHeight = 30;
+                if (g_multiline_mode)
+                {
+                    editStyle = WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_WANTRETURN;
+                    editHeight = 120;
+                }
+
                 hEditInput = CreateWindowExW(
                     0,
                     L"EDIT",
                     g_defalutContent.c_str(),
-                    WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-                    20, 50, 360, 30,
+                    editStyle,
+                    20, 50, 360, editHeight,
                     hDlg,
                     (HMENU)__GCOMMMDLG_IDC_INPUT,
                     ((LPCREATESTRUCTW)lParam)->hInstance,
@@ -749,9 +774,10 @@ namespace GLDLG
 
                 if (hEditInput)
                 {
+                    int editHeight = g_multiline_mode ? (clientHeight - 120) : 30;
                     SetWindowPos(hEditInput, NULL,
                                  20, 55,
-                                 clientWidth - 40, 30,
+                                 clientWidth - 40, editHeight,
                                  SWP_NOZORDER);
                 }
 
@@ -780,8 +806,8 @@ namespace GLDLG
             {
                 if (LOWORD(wParam) == __GCOMMMDLG_IDOK)
                 {
-                    WCHAR buffer[256] = {0};
-                    GetDlgItemTextW(hDlg, __GCOMMMDLG_IDC_INPUT, buffer, 256);
+                    WCHAR buffer[2048] = {0};
+                    GetDlgItemTextW(hDlg, __GCOMMMDLG_IDC_INPUT, buffer, 2048);
                     wcscpy(g_inputText, buffer);
                     g_did_confirm = true;
                     DestroyWindow(hDlg);
@@ -845,6 +871,43 @@ namespace GLDLG
                 return DefWindowProcW(hDlg, msg, wParam, lParam);
             }
         }
+
+        std::string MakeCRLF(const std::string &input)
+        {
+            std::string output;
+            output.reserve(input.length() * 2);
+            for (size_t i = 0; i < input.length(); ++i)
+            {
+                if (input[i] == '\n' && (i == 0 || input[i - 1] != '\r'))
+                {
+                    output += "\r\n";
+                }
+                else
+                {
+                    output += input[i];
+                }
+            }
+            return output;
+        }
+
+        std::string ReverseCRLF(const std::string &input)
+        {
+            std::string output;
+            output.reserve(input.length());
+            for (size_t i = 0; i < input.length(); ++i)
+            {
+                if (input[i] == '\r' && (i + 1 < input.length() && input[i + 1] == '\n'))
+                {
+                    output += '\n';
+                    ++i; // Skip the next character since it's part of CRLF
+                }
+                else
+                {
+                    output += input[i];
+                }
+            }
+            return output;
+        }
     }
 
     /**
@@ -861,11 +924,22 @@ namespace GLDLG
      * @param defaultContent 输入栏内的默认内容
      * @param hParent Parent window handle of the input dialog
      * @param hParent 输入对话框的父窗口句柄
+     * @param multiline_mode Whether to enable multiline input mode (with scrollbar)
+     * @param multiline_mode 是否启用多行输入模式
      * @return Whether the user confirmed the input
      * @return 用户是否确认了输入
+     * 
+     * @note If multiline_mode is true, defaultContent must be LF formatted. The output will also be LF formatted.
+     * @note 如果 multiline_mode 为 true，则 defaultContent 必须是 LF 格式，输出也将是 LF 格式。
      */
-    bool promptDialog(std::string title, std::string message, std::string &output, std::string defaultContent = "", HWND hParent = NULL)
+    bool promptDialog(std::string title, std::string message, std::string &output, std::string defaultContent = "", HWND hParent = NULL, bool multiline_mode = false)
     {
+
+        if(multiline_mode){
+            defaultContent = MakeCRLF(defaultContent);
+        }
+
+        g_multiline_mode = multiline_mode;
 
         WNDCLASSEXW wc = {0};
         wc.cbSize = sizeof(WNDCLASSEXW);
@@ -877,12 +951,13 @@ namespace GLDLG
 
         RegisterClassExW(&wc);
 
+        int dlgHeight = g_multiline_mode ? 320 : 180;
         int targetWidth = GetSystemMetrics(SM_CXSCREEN);
         int targetHeight = GetSystemMetrics(SM_CYSCREEN);
 
-        int x = targetWidth / 2 - 400 / 2, y = targetHeight / 2 - 180 / 2;
+        int x = targetWidth / 2 - 400 / 2, y = targetHeight / 2 - dlgHeight / 2;
 
-        g_inputText = new wchar_t[256];
+        g_inputText = new wchar_t[2048];
         g_message = utf8ToWide(message);
         g_defalutContent = utf8ToWide(defaultContent);
 
@@ -891,7 +966,7 @@ namespace GLDLG
             L"GL_Commdlg.PromptDialogClass",
             utf8ToWide(title).c_str(),
             WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME /* | WS_SIZEBOX*/,
-            x, y, 400, 180,
+            x, y, 400, dlgHeight,
             hParent,
             NULL,
             GetModuleHandleW(NULL),
@@ -920,6 +995,7 @@ namespace GLDLG
         }
 
         output = wideToUtf8(g_inputText);
+        output = ReverseCRLF(output);
         delete[] g_inputText;
         return true;
     }
@@ -1059,7 +1135,6 @@ namespace GLDLG
                 return 0;
             }
 
-            // Draw message text using GDI (supports word wrapping)
             case WM_PAINT:
             {
                 PAINTSTRUCT ps;
